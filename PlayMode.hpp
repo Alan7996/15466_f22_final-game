@@ -22,8 +22,8 @@ enum NoteType : uint16_t { // TODO
 };
 
 struct NoteInfo {
-	Scene::Transform *note_transform;
-	float hitTime = 0.0f;
+	std::vector<Scene::Transform *> note_transforms;
+	std::vector<float> hit_times;
 	NoteType noteType = NoteType::SINGLE;
 };
 
@@ -37,10 +37,11 @@ struct PlayMode : Mode {
 	virtual void draw(glm::uvec2 const &drawable_size) override;
 
 	// read from notes.txt
-	// format: up/down/left/right, coord, hit time, and note type (optional, default to single) separated by space
+	// format: [space separated] single/burst/hold, up/down/left/right, coord(s), @, hit time(s)
 	// if up/down, -y_scale <= coord <= y_scale
 	// if left/right, -x_scale <= coord <= x_scale
 	virtual void read_notes();
+	virtual std::pair<float, float> get_coords(std::string dir, float coord);
 
 	// update note visibility and position
 	virtual void update_notes();

@@ -96,12 +96,31 @@ PlayMode::~PlayMode() {
 
 // https://java2blog.com/split-string-space-cpp/
 void tokenize(std::string const &str, const char* delim, std::vector<std::string> &out) {
-    char *token = strtok(const_cast<char*>(str.c_str()), delim);
-    while (token != nullptr)
-    {
+	char *next_token;
+    char *token = strtok_r(const_cast<char*>(str.c_str()), delim, &next_token);
+    while (token != nullptr) {
         out.push_back(std::string(token));
-        token = strtok(nullptr, delim);
+        token = strtok_r(nullptr, delim, &next_token);
     }
+}
+
+std::pair<float, float> PlayMode::get_coords(std::string dir, float coord) {
+	float x = 0.0f;
+	float y = 0.0f;
+	if (dir == "left") {
+		x = coord;
+		y = y_scale;
+	} else if (dir == "right") {
+		x = coord;
+		y = -y_scale;
+	} else if (dir == "up") {
+		x = x_scale;
+		y = coord;
+	} else if (dir == "down") {
+		x = -x_scale;
+		y = coord;
+	} 
+	return std::make_pair(x, y);
 }
 
 void PlayMode::read_notes() {
@@ -114,48 +133,60 @@ void PlayMode::read_notes() {
 		while(getline(file, line)){
 			std::vector<std::string> note_info;
 			tokenize(line, delim, note_info);
-			float x = 0.0f;
-			float y = 0.0f;
-			float coord = std::stof(note_info[1]);
-			if (note_info[0] == "left") {
-				x = coord;
-				y = y_scale;
-			} else if (note_info[0] == "right") {
-				x = coord;
-				y = -y_scale;
-			} else if (note_info[0] == "up") {
-				x = x_scale;
-				y = coord;
-			} else if (note_info[0] == "down") {
-				x = -x_scale;
-				y = coord;
-			} 
-			float time = std::stof(note_info[2]);
-			NoteType type = NoteType::SINGLE;
-			if (note_info.size() >= 3 && note_info[3] == "hold") {
-				type = NoteType::HOLD;
-			} else if (note_info.size() >= 3 && note_info[3] == "burst") {
-				type = NoteType::BURST;
-			}
-		
-			NoteInfo note;
-			note.note_transform = new Scene::Transform;
-			note.note_transform->name = "Note";
-			note.note_transform->position = glm::vec3(x, y, init_note_depth);
-			std::cout << line << std::endl;
-			std::cout << glm::to_string(note.note_transform->position) << std::endl;
-			note.note_transform->scale = glm::vec3(0.0f, 0.0f, 0.0f); // all notes start from being invisible
-			note.hitTime = time;
-			note.noteType = type;
-			notes.push_back(note);
+			std::string note_type = note_info[0];
+			std::string dir = note_info[1];
+			int idx = find(note_info.begin(), note_info.end(), "@") - note_info.begin();
+			if (note_type == "hold") {
+				NoteInfo note;
+				note.noteType = NoteType::HOLD;
+				for (auto i = 0; i < idx - 2; i++) {
+					float coord = std::stof(note_info[2+i]);
+					float time = std::stof(note_info[idx+1+i]);
+					std::pair<float, float> coords = get_coords(dir, coord);
 
-			scene.drawables.emplace_back(note.note_transform);
-			Scene::Drawable &d = scene.drawables.back();
-			d.pipeline = lit_color_texture_program_pipeline;
-			d.pipeline.vao = main_meshes_for_lit_color_texture_program;
-			d.pipeline.type = note_drawable.type;
-			d.pipeline.start = note_drawable.start;
-			d.pipeline.count = note_drawable.count;
+					Scene::Transform *transform = new Scene::Transform;
+					transform->name = "Note";
+					transform->position = glm::vec3(coords.first, coords.second, init_note_depth);
+					transform->scale = glm::vec3(0.0f, 0.0f, 0.0f); // all notes start from being invisible
+					note.note_transforms.push_back(transform);
+					note.hit_times.push_back(time);
+				}
+				notes.push_back(note);
+
+				for (auto i = 0; i < note.note_transforms.size(); i++) {
+					scene.drawables.emplace_back(note.note_transforms[i]);
+					Scene::Drawable &d = scene.drawables.back();
+					d.pipeline = lit_color_texture_program_pipeline;
+					d.pipeline.vao = main_meshes_for_lit_color_texture_program;
+					d.pipeline.type = note_drawable.type;
+					d.pipeline.start = note_drawable.start;
+					d.pipeline.count = note_drawable.count;
+				}
+			} else {
+				float coord = std::stof(note_info[2]);
+				float time = std::stof(note_info[4]);
+				NoteType type = NoteType::SINGLE;
+				if (note_type == "burst") type = NoteType::BURST;
+				std::pair<float, float> coords = get_coords(dir, coord);
+				
+				NoteInfo note;
+				note.noteType = type;
+				Scene::Transform *transform = new Scene::Transform;
+				transform->name = "Note";
+				transform->position = glm::vec3(coords.first, coords.second, init_note_depth);
+				transform->scale = glm::vec3(0.0f, 0.0f, 0.0f); // all notes start from being invisible
+				note.note_transforms.push_back(transform);
+				note.hit_times.push_back(time);
+				notes.push_back(note);
+
+				scene.drawables.emplace_back(note.note_transforms[0]);
+				Scene::Drawable &d = scene.drawables.back();
+				d.pipeline = lit_color_texture_program_pipeline;
+				d.pipeline.vao = main_meshes_for_lit_color_texture_program;
+				d.pipeline.type = note_drawable.type;
+				d.pipeline.start = note_drawable.start;
+				d.pipeline.count = note_drawable.count;
+			}
 		}
 		file.close();
 	}
@@ -169,17 +200,19 @@ void PlayMode::update_notes() {
 	float music_time = std::chrono::duration<float>(current_time - music_start_time).count();
 
 	for (auto &note : notes) {
-		if (music_time < note.hitTime - note_approach_time) {
-			continue; // not yet time to show this note
-		} else if (music_time > note.hitTime + valid_hit_time_delta) {
-			note.note_transform->scale = glm::vec3(0.0f, 0.0f, 0.0f); // note already gone
-			// TODO: animation
-		} else {
-			// move note toward player
-			note.note_transform->scale = glm::vec3(0.1f, 0.1f, 0.1f);
-			float delta_time = music_time - (note.hitTime - note_approach_time);
-			float note_speed = (border_depth - init_note_depth) / note_approach_time;
-			note.note_transform->position.z = init_note_depth + note_speed * delta_time;
+		for (auto i = 0; i < note.note_transforms.size(); i++) {
+			if (music_time < note.hit_times[i] - note_approach_time) {
+				continue; // not yet time to show this note
+			} else if (music_time > note.hit_times[i] + valid_hit_time_delta) {
+				note.note_transforms[i]->scale = glm::vec3(0.0f, 0.0f, 0.0f); // note already gone
+				// TODO: animation
+			} else {
+				// move note toward player
+				note.note_transforms[i]->scale = glm::vec3(0.1f, 0.1f, 0.1f);
+				float delta_time = music_time - (note.hit_times[i] - note_approach_time);
+				float note_speed = (border_depth - init_note_depth) / note_approach_time;
+				note.note_transforms[i]->position.z = init_note_depth + note_speed * delta_time;
+			}	
 		}
 	}
 }
