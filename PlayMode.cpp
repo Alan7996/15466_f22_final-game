@@ -103,9 +103,9 @@ Make a ray from camera origin to position
 If we implement player camera movement, then ray would always be towards the center of the screen (or a fixed position somewhere idk specifics about fps)
 Shoot the ray and see if it hits a mesh
 If true, check the mesh name
-If mesh name contains substring of “note”, then perform hit operation
+If mesh name contains substring of "note", then perform hit operation
 Check the distance from origin to position hit is the distance from camera origin to note hit plane (so you can’t just shoot the center of the plane and be very close to the spawning of all the notes)
-Check the distance from the position of the mesh to where the ray hits and then determine “good”, “great”, “perfect”
+Check the distance from the position of the mesh to where the ray hits and then determine "good", "great", "perfect"
 For normal note, we would then remove this mesh from list of meshes to be drawn
 For other notes, do something else
 If it doesn’t, need to determine whether if we want to punish the player or not
@@ -230,8 +230,8 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 			delta.x *= float(window_size.y) / float(window_size.x);
 			delta.y = evt.motion.yrel / float(window_size.y) * -2.0f;
 
-			cam.azimuth -= 0.3 * delta.x;
-			cam.elevation -= 0.3 * delta.y;
+			cam.azimuth -= 0.3f * delta.x;
+			cam.elevation -= 0.3f * delta.y;
 
 			cam.azimuth /= 2.0f * 3.1415926f;
 			cam.azimuth -= std::round(cam.azimuth);
