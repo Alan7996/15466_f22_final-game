@@ -16,6 +16,7 @@
 #include <fstream>
 #include <string>
 #include <cstring>
+#include <array>
 #include "glm/gtx/string_cast.hpp"
 
 GLuint main_meshes_for_lit_color_texture_program = 0;
@@ -104,11 +105,11 @@ If we implement player camera movement, then ray would always be towards the cen
 Shoot the ray and see if it hits a mesh
 If true, check the mesh name
 If mesh name contains substring of "note", then perform hit operation
-Check the distance from origin to position hit is the distance from camera origin to note hit plane (so you can’t just shoot the center of the plane and be very close to the spawning of all the notes)
+Check the distance from origin to position hit is the distance from camera origin to note hit plane (so you can't just shoot the center of the plane and be very close to the spawning of all the notes)
 Check the distance from the position of the mesh to where the ray hits and then determine "good", "great", "perfect"
 For normal note, we would then remove this mesh from list of meshes to be drawn
 For other notes, do something else
-If it doesn’t, need to determine whether if we want to punish the player or not
+If it doesn't, need to determine whether if we want to punish the player or not
 If we want to punish the player, we would need to determine how far away the closest note is
 */
 // bool trace_ray() {
@@ -121,12 +122,20 @@ If we want to punish the player, we would need to determine how far away the clo
 
 // https://java2blog.com/split-string-space-cpp/
 void tokenize(std::string const &str, const char* delim, std::vector<std::string> &out) {
-    char *token = strtok(const_cast<char*>(str.c_str()), delim);
-    while (token != nullptr)
-    {
+    char *next_token;
+	#if defined(_WIN32)
+    char *token = strtok_s(const_cast<char*>(str.c_str()), delim, &next_token);
+    while (token != nullptr) {
         out.push_back(std::string(token));
-        token = strtok(nullptr, delim);
+        token = strtok_s(nullptr, delim, &next_token);
     }
+	#else
+	char *token = strtok_r(const_cast<char*>(str.c_str()), delim, &next_token);
+    while (token != nullptr) {
+        out.push_back(std::string(token));
+        token = strtok_r(nullptr, delim, &next_token);
+    }
+	#endif
 }
 
 void PlayMode::read_notes() {
@@ -272,6 +281,15 @@ void PlayMode::update(float elapsed) {
 }
 
 void PlayMode::draw(glm::uvec2 const &drawable_size) {
+	static std::array< glm::vec2, 16 > const circle = [](){
+		std::array< glm::vec2, 16 > ret;
+		for (uint32_t a = 0; a < ret.size(); ++a) {
+			float ang = a / float(ret.size()) * 2.0f * float(M_PI);
+			ret[a] = glm::vec2(std::cos(ang), std::sin(ang));
+		}
+		return ret;
+	}();
+
 	//update camera aspect ratio for drawable:
 	camera->transform->rotation =
 		normalize(glm::angleAxis(cam.azimuth, glm::vec3(0.0f, 1.0f, 0.0f))
@@ -329,6 +347,14 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 			glm::vec3(-aspect + 0.1f * H + ofs, -1.0 + + 0.1f * H + ofs, 0.0),
 			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 			glm::u8vec4(0xff, 0xff, 0xff, 0x00));
+
+		for (uint32_t a = 0; a < circle.size(); ++a) {
+				lines.draw(
+					glm::vec3(camera->transform->position.x + 0.02f * circle[a], 0.0f),
+					glm::vec3(camera->transform->position.y + 0.02f * circle[(a+1)%circle.size()], 0.0f),
+					glm::u8vec4(0xff, 0xff, 0xff, 0x00)
+				);
+			}
 	}
 	GL_ERRORS();
 }
