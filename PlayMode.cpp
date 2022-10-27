@@ -12,226 +12,207 @@
 #include <glm/gtx/quaternion.hpp>
 
 #include <random>
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <cstring>
+#include "glm/gtx/string_cast.hpp"
 
-GLuint phonebank_meshes_for_lit_color_texture_program = 0;
-Load< MeshBuffer > phonebank_meshes(LoadTagDefault, []() -> MeshBuffer const * {
-	MeshBuffer const *ret = new MeshBuffer(data_path("phone-bank.pnct"));
-	phonebank_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
+GLuint main_meshes_for_lit_color_texture_program = 0;
+Load< MeshBuffer > main_meshes(LoadTagDefault, []() -> MeshBuffer const * {
+	MeshBuffer const *ret = new MeshBuffer(data_path("main.pnct"));
+	main_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
 	return ret;
 });
 
-Load< Scene > phonebank_scene(LoadTagDefault, []() -> Scene const * {
-	return new Scene(data_path("phone-bank.scene"), [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name){
-		Mesh const &mesh = phonebank_meshes->lookup(mesh_name);
+Load< Scene > main_scene(LoadTagDefault, []() -> Scene const * {
+	return new Scene(data_path("main.scene"), [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name){
+		Mesh const &mesh = main_meshes->lookup(mesh_name);
 
 		scene.drawables.emplace_back(transform);
 		Scene::Drawable &drawable = scene.drawables.back();
 
 		drawable.pipeline = lit_color_texture_program_pipeline;
 
-		drawable.pipeline.vao = phonebank_meshes_for_lit_color_texture_program;
+		drawable.pipeline.vao = main_meshes_for_lit_color_texture_program;
 		drawable.pipeline.type = mesh.type;
 		drawable.pipeline.start = mesh.start;
 		drawable.pipeline.count = mesh.count;
-
 	});
 });
 
-WalkMesh const *walkmesh = nullptr;
-Load< WalkMeshes > phonebank_walkmeshes(LoadTagDefault, []() -> WalkMeshes const * {
-	WalkMeshes *ret = new WalkMeshes(data_path("phone-bank.w"));
-	walkmesh = &ret->lookup("WalkMesh");
-	return ret;
-});
+PlayMode::PlayMode() : scene(*main_scene) {
+	// camera and assets
+	if (scene.cameras.size() != 1) throw std::runtime_error("Expecting scene to have exactly one camera, but it has " + std::to_string(scene.cameras.size()));
+	camera = &scene.cameras.front();
+	for (auto &d : scene.drawables) {
+		if (d.transform->name == "Note") {
+			note_drawable.type = d.pipeline.type;
+			note_drawable.start = d.pipeline.start;
+			note_drawable.count = d.pipeline.count;
+		} else if (d.transform->name == "Gun") {
+			gun_drawable.type = d.pipeline.type;
+			gun_drawable.start = d.pipeline.start;
+			gun_drawable.count = d.pipeline.count;
+		} else if (d.transform->name == "Border") {
+			border_drawable.type = d.pipeline.type;
+			border_drawable.start = d.pipeline.start;
+			border_drawable.count = d.pipeline.count;
+		} 
+	}
+	scene.drawables.clear();
 
-PlayMode::PlayMode() : scene(*phonebank_scene) {
-	//create a player transform:
-	scene.transforms.emplace_back();
-	player.transform = &scene.transforms.back();
+	{ // initialize game state
+		// gun_transform = new Scene::Transform;
+		// gun_transform->name = "Gun";
+		// gun_transform->position = glm::vec3(0.0f, 0.0f, 0.0f);
+		// gun_transform->scale = glm::vec3(1.0f, 1.0f, 1.0f);
+		// scene.drawables.emplace_back(gun_transform);
+		// Scene::Drawable &d1 = scene.drawables.back();
+		// d1.pipeline = lit_color_texture_program_pipeline;
+		// d1.pipeline.vao = main_meshes_for_lit_color_texture_program;
+		// d1.pipeline.type = gun_drawable.type;
+		// d1.pipeline.start = gun_drawable.start;
+		// d1.pipeline.count = gun_drawable.count;
 
-	//create a player camera attached to a child of the player transform:
-	scene.transforms.emplace_back();
-	scene.cameras.emplace_back(&scene.transforms.back());
-	player.camera = &scene.cameras.back();
-	player.camera->fovy = glm::radians(60.0f);
-	player.camera->near = 0.01f;
-	player.camera->transform->parent = player.transform;
+		border_transform = new Scene::Transform;
+		border_transform->name = "Border";
+		border_transform->position = glm::vec3(0.0f, 0.0f, border_depth);
+		border_transform->scale = glm::vec3(x_scale, y_scale, 0.01f);
+		scene.drawables.emplace_back(border_transform);
+		Scene::Drawable &d2 = scene.drawables.back();
+		d2.pipeline = lit_color_texture_program_pipeline;
+		d2.pipeline.vao = main_meshes_for_lit_color_texture_program;
+		d2.pipeline.type = border_drawable.type;
+		d2.pipeline.start = border_drawable.start;
+		d2.pipeline.count = border_drawable.count;
 
-	//player's eyes are 1.8 units above the ground:
-	player.camera->transform->position = glm::vec3(0.0f, 0.0f, 1.8f);
-
-	//rotate camera facing direction (-z) to player facing direction (+y):
-	player.camera->transform->rotation = glm::angleAxis(glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-
-	//start player walking at nearest walk point:
-	player.at = walkmesh->nearest_walk_point(player.transform->position);
-
+		read_notes();
+	}
 }
 
 PlayMode::~PlayMode() {
 }
 
+// https://java2blog.com/split-string-space-cpp/
+void tokenize(std::string const &str, const char* delim, std::vector<std::string> &out) {
+    char *token = strtok(const_cast<char*>(str.c_str()), delim);
+    while (token != nullptr)
+    {
+        out.push_back(std::string(token));
+        token = strtok(nullptr, delim);
+    }
+}
+
+void PlayMode::read_notes() {
+	// https://www.tutorialspoint.com/read-file-line-by-line-using-cplusplus
+	std::fstream file;
+	const char* delim = " ";
+	file.open(data_path("notes.txt"), std::ios::in);
+	if (file.is_open()){
+		std::string line;
+		while(getline(file, line)){
+			std::vector<std::string> note_info;
+			tokenize(line, delim, note_info);
+			float x = 0.0f;
+			float y = 0.0f;
+			float coord = std::stof(note_info[1]);
+			if (note_info[0] == "left") {
+				x = coord;
+				y = y_scale;
+			} else if (note_info[0] == "right") {
+				x = coord;
+				y = -y_scale;
+			} else if (note_info[0] == "up") {
+				x = x_scale;
+				y = coord;
+			} else if (note_info[0] == "down") {
+				x = -x_scale;
+				y = coord;
+			} 
+			float time = std::stof(note_info[2]);
+			NoteType type = NoteType::SINGLE;
+			if (note_info.size() >= 3 && note_info[3] == "hold") {
+				type = NoteType::HOLD;
+			} else if (note_info.size() >= 3 && note_info[3] == "burst") {
+				type = NoteType::BURST;
+			}
+		
+			NoteInfo note;
+			note.note_transform = new Scene::Transform;
+			note.note_transform->name = "Note";
+			note.note_transform->position = glm::vec3(x, y, init_note_depth);
+			std::cout << line << std::endl;
+			std::cout << glm::to_string(note.note_transform->position) << std::endl;
+			note.note_transform->scale = glm::vec3(0.0f, 0.0f, 0.0f); // all notes start from being invisible
+			note.hitTime = time;
+			note.noteType = type;
+			notes.push_back(note);
+
+			scene.drawables.emplace_back(note.note_transform);
+			Scene::Drawable &d = scene.drawables.back();
+			d.pipeline = lit_color_texture_program_pipeline;
+			d.pipeline.vao = main_meshes_for_lit_color_texture_program;
+			d.pipeline.type = note_drawable.type;
+			d.pipeline.start = note_drawable.start;
+			d.pipeline.count = note_drawable.count;
+		}
+		file.close();
+	}
+}
+
+void PlayMode::update_notes() {
+	if (!has_started) {
+		return;
+	}
+	auto current_time = std::chrono::high_resolution_clock::now();
+	float music_time = std::chrono::duration<float>(current_time - music_start_time).count();
+
+	for (auto &note : notes) {
+		if (music_time < note.hitTime - note_approach_time) {
+			continue; // not yet time to show this note
+		} else if (music_time > note.hitTime + valid_hit_time_delta) {
+			note.note_transform->scale = glm::vec3(0.0f, 0.0f, 0.0f); // note already gone
+			// TODO: animation
+		} else {
+			// move note toward player
+			note.note_transform->scale = glm::vec3(0.1f, 0.1f, 0.1f);
+			float delta_time = music_time - (note.hitTime - note_approach_time);
+			float note_speed = (border_depth - init_note_depth) / note_approach_time;
+			note.note_transform->position.z = init_note_depth + note_speed * delta_time;
+		}
+	}
+}
+
 bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
 
 	if (evt.type == SDL_KEYDOWN) {
-		if (evt.key.keysym.sym == SDLK_ESCAPE) {
-			SDL_SetRelativeMouseMode(SDL_FALSE);
-			return true;
-		} else if (evt.key.keysym.sym == SDLK_a) {
-			left.downs += 1;
-			left.pressed = true;
-			return true;
-		} else if (evt.key.keysym.sym == SDLK_d) {
-			right.downs += 1;
-			right.pressed = true;
-			return true;
-		} else if (evt.key.keysym.sym == SDLK_w) {
-			up.downs += 1;
-			up.pressed = true;
-			return true;
-		} else if (evt.key.keysym.sym == SDLK_s) {
-			down.downs += 1;
-			down.pressed = true;
+		if (evt.key.keysym.sym == SDLK_RETURN) {
+			// start game
+			if (!has_started) {
+				has_started = true;
+				music_start_time = std::chrono::high_resolution_clock::now();
+			}
 			return true;
 		}
-	} else if (evt.type == SDL_KEYUP) {
-		if (evt.key.keysym.sym == SDLK_a) {
-			left.pressed = false;
-			return true;
-		} else if (evt.key.keysym.sym == SDLK_d) {
-			right.pressed = false;
-			return true;
-		} else if (evt.key.keysym.sym == SDLK_w) {
-			up.pressed = false;
-			return true;
-		} else if (evt.key.keysym.sym == SDLK_s) {
-			down.pressed = false;
-			return true;
-		}
-	} else if (evt.type == SDL_MOUSEBUTTONDOWN) {
-		if (SDL_GetRelativeMouseMode() == SDL_FALSE) {
-			SDL_SetRelativeMouseMode(SDL_TRUE);
-			return true;
-		}
-	} else if (evt.type == SDL_MOUSEMOTION) {
-		if (SDL_GetRelativeMouseMode() == SDL_TRUE) {
-			glm::vec2 motion = glm::vec2(
-				evt.motion.xrel / float(window_size.y),
-				-evt.motion.yrel / float(window_size.y)
-			);
-			glm::vec3 upDir = walkmesh->to_world_smooth_normal(player.at);
-			player.transform->rotation = glm::angleAxis(-motion.x * player.camera->fovy, upDir) * player.transform->rotation;
-
-			float pitch = glm::pitch(player.camera->transform->rotation);
-			pitch += motion.y * player.camera->fovy;
-			//camera looks down -z (basically at the player's feet) when pitch is at zero.
-			pitch = std::min(pitch, 0.95f * 3.1415926f);
-			pitch = std::max(pitch, 0.05f * 3.1415926f);
-			player.camera->transform->rotation = glm::angleAxis(pitch, glm::vec3(1.0f, 0.0f, 0.0f));
-
-			return true;
-		}
+		// TODO: hit note
 	}
-
 	return false;
 }
 
 void PlayMode::update(float elapsed) {
-	//player walking:
-	{
-		//combine inputs into a move:
-		constexpr float PlayerSpeed = 3.0f;
-		glm::vec2 move = glm::vec2(0.0f);
-		if (left.pressed && !right.pressed) move.x =-1.0f;
-		if (!left.pressed && right.pressed) move.x = 1.0f;
-		if (down.pressed && !up.pressed) move.y =-1.0f;
-		if (!down.pressed && up.pressed) move.y = 1.0f;
-
-		//make it so that moving diagonally doesn't go faster:
-		if (move != glm::vec2(0.0f)) move = glm::normalize(move) * PlayerSpeed * elapsed;
-
-		//get move in world coordinate system:
-		glm::vec3 remain = player.transform->make_local_to_world() * glm::vec4(move.x, move.y, 0.0f, 0.0f);
-
-		//using a for() instead of a while() here so that if walkpoint gets stuck in
-		// some awkward case, code will not infinite loop:
-		for (uint32_t iter = 0; iter < 10; ++iter) {
-			if (remain == glm::vec3(0.0f)) break;
-			WalkPoint end;
-			float time;
-			walkmesh->walk_in_triangle(player.at, remain, &end, &time);
-			player.at = end;
-			if (time == 1.0f) {
-				//finished within triangle:
-				remain = glm::vec3(0.0f);
-				break;
-			}
-			//some step remains:
-			remain *= (1.0f - time);
-			//try to step over edge:
-			glm::quat rotation;
-			if (walkmesh->cross_edge(player.at, &end, &rotation)) {
-				//stepped to a new triangle:
-				player.at = end;
-				//rotate step to follow surface:
-				remain = rotation * remain;
-			} else {
-				//ran into a wall, bounce / slide along it:
-				glm::vec3 const &a = walkmesh->vertices[player.at.indices.x];
-				glm::vec3 const &b = walkmesh->vertices[player.at.indices.y];
-				glm::vec3 const &c = walkmesh->vertices[player.at.indices.z];
-				glm::vec3 along = glm::normalize(b-a);
-				glm::vec3 normal = glm::normalize(glm::cross(b-a, c-a));
-				glm::vec3 in = glm::cross(normal, along);
-
-				//check how much 'remain' is pointing out of the triangle:
-				float d = glm::dot(remain, in);
-				if (d < 0.0f) {
-					//bounce off of the wall:
-					remain += (-1.25f * d) * in;
-				} else {
-					//if it's just pointing along the edge, bend slightly away from wall:
-					remain += 0.01f * d * in;
-				}
-			}
-		}
-
-		if (remain != glm::vec3(0.0f)) {
-			std::cout << "NOTE: code used full iteration budget for walking." << std::endl;
-		}
-
-		//update player's position to respect walking:
-		player.transform->position = walkmesh->to_world_point(player.at);
-
-		{ //update player's rotation to respect local (smooth) up-vector:
-			
-			glm::quat adjust = glm::rotation(
-				player.transform->rotation * glm::vec3(0.0f, 0.0f, 1.0f), //current up vector
-				walkmesh->to_world_smooth_normal(player.at) //smoothed up vector at walk location
-			);
-			player.transform->rotation = glm::normalize(adjust * player.transform->rotation);
-		}
-
-		/*
-		glm::mat4x3 frame = camera->transform->make_local_to_parent();
-		glm::vec3 right = frame[0];
-		//glm::vec3 up = frame[1];
-		glm::vec3 forward = -frame[2];
-
-		camera->transform->position += move.x * right + move.y * forward;
-		*/
-	}
-
 	//reset button press counters:
 	left.downs = 0;
 	right.downs = 0;
 	up.downs = 0;
 	down.downs = 0;
+
+	update_notes();
 }
 
 void PlayMode::draw(glm::uvec2 const &drawable_size) {
 	//update camera aspect ratio for drawable:
-	player.camera->aspect = float(drawable_size.x) / float(drawable_size.y);
+	camera->aspect = float(drawable_size.x) / float(drawable_size.y);
 
 	//set up light type and position for lit_color_texture_program:
 	// TODO: consider using the Light(s) in the scene to do this
@@ -248,7 +229,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS); //this is the default depth comparison function, but FYI you can change it.
 
-	scene.draw(*player.camera);
+	scene.draw(*camera);
 
 	/* In case you are wondering if your walkmesh is lining up with your scene, try:
 	{
