@@ -148,7 +148,7 @@ void PlayMode::read_notes() {
 			if (note_type == "hold") {
 				NoteInfo note;
 				note.noteType = NoteType::HOLD;
-				for (uint i = 0; i < idx - 2; i++) {
+				for (int i = 0; i < idx - 2; i++) {
 					float coord = std::stof(note_info[2+i]);
 					float time = std::stof(note_info[idx+1+i]);
 					std::pair<float, float> coords = get_coords(dir, coord);
@@ -162,7 +162,7 @@ void PlayMode::read_notes() {
 				}
 				notes.push_back(note);
 
-				for (uint i = 0; i < note.note_transforms.size(); i++) {
+				for (uint64_t i = 0; i < note.note_transforms.size(); i++) {
 					scene.drawables.emplace_back(note.note_transforms[i]);
 					Scene::Drawable &d = scene.drawables.back();
 					d.pipeline = lit_color_texture_program_pipeline;
@@ -209,7 +209,7 @@ void PlayMode::update_notes() {
 	float music_time = std::chrono::duration<float>(current_time - music_start_time).count();
 
 	for (auto &note : notes) {
-		for (auto i = 0; i < note.note_transforms.size(); i++) {
+		for (uint64_t i = 0; i < note.note_transforms.size(); i++) {
 			if (music_time < note.hit_times[i] - note_approach_time) {
 				continue; // not yet time to show this note
 			} else if (music_time > note.hit_times[i] + valid_hit_time_delta) {
