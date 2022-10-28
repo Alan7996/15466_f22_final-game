@@ -103,5 +103,10 @@
         "memory_resource": "cpp",
         "stop_token": "cpp",
         "cinttypes": "cpp"
+        "cstdarg": "cpp",
+        "cwctype": "cpp",
+        "mutex": "cpp",
+        "string_view": "cpp",
+        "variant": "cpp"
     }
 }
