@@ -46,6 +46,11 @@ struct PlayMode : Mode {
 	// update note visibility and position
 	virtual void update_notes();
 
+	// cast a ray to detect collision with a mesh
+	// virtual bool trace_ray();
+	// // see if you hit the notes function
+	// virtual bool hit_notes();
+
 	//----- game state -----
 
 	// input tracking:
@@ -80,4 +85,14 @@ struct PlayMode : Mode {
 	float border_depth = -0.0f;
 	float note_approach_time = 4.0f; // time between when the note shows up and hit time
 	float valid_hit_time_delta = 0.2f;
+
+	// from ShowSceneMode.hpp
+	struct {
+		float radius = 2.0f;
+		float azimuth = 0.0f; //angle ccw of -y axis, in radians, [-pi,pi]
+		float elevation = 3.1415926f / 2.0f; //angle above ground, in radians, [-pi,pi]
+		glm::vec3 target = glm::vec3(0.0f);
+		bool flip_x = false; //flip x inputs when moving? (used to handle situations where camera is upside-down)
+	} cam;
+
 };

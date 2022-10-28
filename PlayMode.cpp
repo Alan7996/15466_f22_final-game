@@ -16,6 +16,7 @@
 #include <fstream>
 #include <string>
 #include <cstring>
+#include <array>
 #include "glm/gtx/string_cast.hpp"
 
 GLuint main_meshes_for_lit_color_texture_program = 0;
@@ -43,6 +44,7 @@ Load< Scene > main_scene(LoadTagDefault, []() -> Scene const * {
 
 PlayMode::PlayMode() : scene(*main_scene) {
 	// camera and assets
+	SDL_SetRelativeMouseMode(SDL_TRUE);
 	if (scene.cameras.size() != 1) throw std::runtime_error("Expecting scene to have exactly one camera, but it has " + std::to_string(scene.cameras.size()));
 	camera = &scene.cameras.front();
 	for (auto &d : scene.drawables) {
@@ -94,8 +96,33 @@ PlayMode::PlayMode() : scene(*main_scene) {
 PlayMode::~PlayMode() {
 }
 
+/*
+Pseudocode:
+Get the position in screen space where the mouse is clicked
+Transform position to world space
+Make a ray from camera origin to position
+If we implement player camera movement, then ray would always be towards the center of the screen (or a fixed position somewhere idk specifics about fps)
+Shoot the ray and see if it hits a mesh
+If true, check the mesh name
+If mesh name contains substring of "note", then perform hit operation
+Check the distance from origin to position hit is the distance from camera origin to note hit plane (so you can't just shoot the center of the plane and be very close to the spawning of all the notes)
+Check the distance from the position of the mesh to where the ray hits and then determine "good", "great", "perfect"
+For normal note, we would then remove this mesh from list of meshes to be drawn
+For other notes, do something else
+If it doesn't, need to determine whether if we want to punish the player or not
+If we want to punish the player, we would need to determine how far away the closest note is
+*/
+// bool trace_ray() {
+// 	return false;
+// }
+// bool hit_notes() {
+// 	return false;
+// }
+
+
 // https://java2blog.com/split-string-space-cpp/
 void tokenize(std::string const &str, const char* delim, std::vector<std::string> &out) {
+
 	char *next_token, *token;
 	#ifdef _WIN32
     	token = strtok_s(const_cast<char*>(str.c_str()), delim, &next_token);
@@ -109,7 +136,6 @@ void tokenize(std::string const &str, const char* delim, std::vector<std::string
 		#else
 			token = strtok_r(nullptr, delim, &next_token);
 		#endif
-        
     }
 }
 
@@ -237,7 +263,43 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 			}
 			return true;
 		}
+	}
+	else if (evt.type == SDL_MOUSEBUTTONDOWN) {
 		// TODO: hit note
+	} else if (evt.type == SDL_MOUSEMOTION) {
+		// fix motion
+			glm::vec2 delta;
+			delta.x = evt.motion.xrel / float(window_size.x) * 2.0f;
+			delta.x *= float(window_size.y) / float(window_size.x);
+			delta.y = evt.motion.yrel / float(window_size.y) * -2.0f;
+
+			cam.azimuth -= 0.3f * delta.x;
+			cam.elevation -= 0.3f * delta.y;
+
+			cam.azimuth /= 2.0f * 3.1415926f;
+			cam.azimuth -= std::round(cam.azimuth);
+			cam.azimuth *= 2.0f * 3.1415926f;
+
+			cam.elevation /= 2.0f * 3.1415926f;
+			cam.elevation -= std::round(cam.elevation);
+			cam.elevation *= 2.0f * 3.1415926f;
+/*
+			glm::vec2 motion = glm::vec2(
+				evt.motion.xrel / float(window_size.y),
+				-evt.motion.yrel / float(window_size.y)
+			);
+			glm::vec3 upDir = walkmesh->to_world_smooth_normal(player.at);
+			player.transform->rotation = glm::angleAxis(-motion.x * player.camera->fovy, upDir) * player.transform->rotation;
+
+			float pitch = glm::pitch(player.camera->transform->rotation);
+			pitch += motion.y * player.camera->fovy;
+			//camera looks down -z (basically at the player's feet) when pitch is at zero.
+			pitch = std::min(pitch, 0.95f * 3.1415926f);
+			pitch = std::max(pitch, 0.05f * 3.1415926f);
+			player.camera->transform->rotation = glm::angleAxis(pitch, glm::vec3(1.0f, 0.0f, 0.0f));
+
+*/
+		return true;
 	}
 	return false;
 }
@@ -253,7 +315,21 @@ void PlayMode::update(float elapsed) {
 }
 
 void PlayMode::draw(glm::uvec2 const &drawable_size) {
+	static std::array< glm::vec2, 16 > const circle = [](){
+		std::array< glm::vec2, 16 > ret;
+		for (uint32_t a = 0; a < ret.size(); ++a) {
+			float ang = a / float(ret.size()) * 2.0f * float(M_PI);
+			ret[a] = glm::vec2(std::cos(ang), std::sin(ang));
+		}
+		return ret;
+	}();
+
 	//update camera aspect ratio for drawable:
+	camera->transform->rotation =
+		normalize(glm::angleAxis(cam.azimuth, glm::vec3(0.0f, 1.0f, 0.0f))
+		* glm::angleAxis(0.5f * 3.1415926f + -cam.elevation, glm::vec3(1.0f, 0.0f, 0.0f)))
+	;
+	camera->transform->scale = glm::vec3(1.0f);
 	camera->aspect = float(drawable_size.x) / float(drawable_size.y);
 
 	//set up light type and position for lit_color_texture_program:
@@ -305,6 +381,14 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 			glm::vec3(-aspect + 0.1f * H + ofs, -1.0 + + 0.1f * H + ofs, 0.0),
 			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 			glm::u8vec4(0xff, 0xff, 0xff, 0x00));
+
+		for (uint32_t a = 0; a < circle.size(); ++a) {
+				lines.draw(
+					glm::vec3(camera->transform->position.x + 0.02f * circle[a], 0.0f),
+					glm::vec3(camera->transform->position.y + 0.02f * circle[(a+1)%circle.size()], 0.0f),
+					glm::u8vec4(0xff, 0xff, 0xff, 0x00)
+				);
+			}
 	}
 	GL_ERRORS();
 }
