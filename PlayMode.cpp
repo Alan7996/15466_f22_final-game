@@ -283,22 +283,7 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 			cam.elevation /= 2.0f * 3.1415926f;
 			cam.elevation -= std::round(cam.elevation);
 			cam.elevation *= 2.0f * 3.1415926f;
-/*
-			glm::vec2 motion = glm::vec2(
-				evt.motion.xrel / float(window_size.y),
-				-evt.motion.yrel / float(window_size.y)
-			);
-			glm::vec3 upDir = walkmesh->to_world_smooth_normal(player.at);
-			player.transform->rotation = glm::angleAxis(-motion.x * player.camera->fovy, upDir) * player.transform->rotation;
 
-			float pitch = glm::pitch(player.camera->transform->rotation);
-			pitch += motion.y * player.camera->fovy;
-			//camera looks down -z (basically at the player's feet) when pitch is at zero.
-			pitch = std::min(pitch, 0.95f * 3.1415926f);
-			pitch = std::max(pitch, 0.05f * 3.1415926f);
-			player.camera->transform->rotation = glm::angleAxis(pitch, glm::vec3(1.0f, 0.0f, 0.0f));
-
-*/
 		return true;
 	}
 	return false;
