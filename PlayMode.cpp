@@ -96,11 +96,20 @@ PlayMode::~PlayMode() {
 
 // https://java2blog.com/split-string-space-cpp/
 void tokenize(std::string const &str, const char* delim, std::vector<std::string> &out) {
-	char *next_token;
-    char *token = strtok_r(const_cast<char*>(str.c_str()), delim, &next_token);
+	char *next_token, *token;
+	#ifdef _WIN32
+    	token = strtok_s(const_cast<char*>(str.c_str()), delim, &next_token);
+	#else
+		token = strtok_r(const_cast<char*>(str.c_str()), delim, &next_token);
+	#endif
     while (token != nullptr) {
         out.push_back(std::string(token));
-        token = strtok_r(nullptr, delim, &next_token);
+		#ifdef _WIN32
+			token = strtok_s(nullptr, delim, &next_token);
+		#else
+			token = strtok_r(nullptr, delim, &next_token);
+		#endif
+        
     }
 }
 
@@ -135,11 +144,11 @@ void PlayMode::read_notes() {
 			tokenize(line, delim, note_info);
 			std::string note_type = note_info[0];
 			std::string dir = note_info[1];
-			int idx = find(note_info.begin(), note_info.end(), "@") - note_info.begin();
+			int idx = (int) (find(note_info.begin(), note_info.end(), "@") - note_info.begin());
 			if (note_type == "hold") {
 				NoteInfo note;
 				note.noteType = NoteType::HOLD;
-				for (auto i = 0; i < idx - 2; i++) {
+				for (uint i = 0; i < idx - 2; i++) {
 					float coord = std::stof(note_info[2+i]);
 					float time = std::stof(note_info[idx+1+i]);
 					std::pair<float, float> coords = get_coords(dir, coord);
@@ -153,7 +162,7 @@ void PlayMode::read_notes() {
 				}
 				notes.push_back(note);
 
-				for (auto i = 0; i < note.note_transforms.size(); i++) {
+				for (uint i = 0; i < note.note_transforms.size(); i++) {
 					scene.drawables.emplace_back(note.note_transforms[i]);
 					Scene::Drawable &d = scene.drawables.back();
 					d.pipeline = lit_color_texture_program_pipeline;
