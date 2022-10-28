@@ -7,33 +7,77 @@
 
 #include <vector>
 #include <deque>
+#include <chrono>
+
+struct Drawable {
+	GLenum type = GL_TRIANGLES;
+	GLuint start = 0;
+	GLuint count = 0; 
+};
+
+enum NoteType : uint16_t { // TODO
+	SINGLE,
+	HOLD,
+	BURST,
+};
+
+struct NoteInfo {
+	std::vector<Scene::Transform *> note_transforms;
+	std::vector<float> hit_times;
+	NoteType noteType = NoteType::SINGLE;
+};
 
 struct PlayMode : Mode {
 	PlayMode();
 	virtual ~PlayMode();
 
-	//functions called by main loop:
+	// functions called by main loop:
 	virtual bool handle_event(SDL_Event const &, glm::uvec2 const &window_size) override;
 	virtual void update(float elapsed) override;
 	virtual void draw(glm::uvec2 const &drawable_size) override;
 
+	// read from notes.txt
+	// format: [space separated] single/burst/hold, up/down/left/right, coord(s), @, hit time(s)
+	// if up/down, -y_scale <= coord <= y_scale
+	// if left/right, -x_scale <= coord <= x_scale
+	virtual void read_notes();
+	virtual std::pair<float, float> get_coords(std::string dir, float coord);
+
+	// update note visibility and position
+	virtual void update_notes();
+
 	//----- game state -----
 
-	//input tracking:
+	// input tracking:
 	struct Button {
 		uint8_t downs = 0;
 		uint8_t pressed = 0;
 	} left, right, down, up;
 
-	//local copy of the game scene (so code can change it during gameplay):
+	// local copy of the game scene
 	Scene scene;
 
-	//player info:
-	struct Player {
-		WalkPoint at;
-		//transform is at player's feet and will be yawed by mouse left/right motion:
-		Scene::Transform *transform = nullptr;
-		//camera is at player's head and will be pitched by mouse up/down motion:
-		Scene::Camera *camera = nullptr;
-	} player;
+	Scene::Camera *camera = nullptr;
+
+	// assets
+	Drawable note_drawable;
+	std::vector<NoteInfo> notes;
+
+	Drawable gun_drawable;
+	Scene::Transform *gun_transform = nullptr;
+
+	Drawable border_drawable;
+	Scene::Transform *border_transform = nullptr;
+	float x_scale = 1.0f;
+	float y_scale = 1.0f;
+
+	// music
+	bool has_started = false;
+	std::chrono::time_point<std::chrono::high_resolution_clock> music_start_time;
+
+	// settings
+	float init_note_depth = -20.0f;
+	float border_depth = -0.0f;
+	float note_approach_time = 4.0f; // time between when the note shows up and hit time
+	float valid_hit_time_delta = 0.2f;
 };
