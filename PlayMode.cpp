@@ -96,29 +96,6 @@ PlayMode::PlayMode() : scene(*main_scene) {
 PlayMode::~PlayMode() {
 }
 
-/*
-Pseudocode:
-Get the position in screen space where the mouse is clicked
-Transform position to world space
-Make a ray from camera origin to position
-If we implement player camera movement, then ray would always be towards the center of the screen (or a fixed position somewhere idk specifics about fps)
-Shoot the ray and see if it hits a mesh
-If true, check the mesh name
-If mesh name contains substring of "note", then perform hit operation
-Check the distance from origin to position hit is the distance from camera origin to note hit plane (so you can't just shoot the center of the plane and be very close to the spawning of all the notes)
-Check the distance from the position of the mesh to where the ray hits and then determine "good", "great", "perfect"
-For normal note, we would then remove this mesh from list of meshes to be drawn
-For other notes, do something else
-If it doesn't, need to determine whether if we want to punish the player or not
-If we want to punish the player, we would need to determine how far away the closest note is
-*/
-// bool trace_ray() {
-// 	return false;
-// }
-// bool hit_notes() {
-// 	return false;
-// }
-
 
 // https://java2blog.com/split-string-space-cpp/
 void tokenize(std::string const &str, const char* delim, std::vector<std::string> &out) {
@@ -162,7 +139,7 @@ void PlayMode::read_notes() {
 	// https://www.tutorialspoint.com/read-file-line-by-line-using-cplusplus
 	std::fstream file;
 	const char* delim = " ";
-	file.open(data_path("notes.txt"), std::ios::in);
+	file.open(data_path("notes_single.txt"), std::ios::in);
 	if (file.is_open()){
 		std::string line;
 		while(getline(file, line)){
@@ -227,20 +204,23 @@ void PlayMode::read_notes() {
 	}
 }
 
+
 void PlayMode::update_notes() {
 	if (!has_started) {
 		return;
 	}
 	auto current_time = std::chrono::high_resolution_clock::now();
 	float music_time = std::chrono::duration<float>(current_time - music_start_time).count();
-
-	for (auto &note : notes) {
+	std::vector<uint64_t> indices;
+	for (uint64_t j = 0; j < notes.size(); j++) {
+		auto &note = notes[j];
 		for (uint64_t i = 0; i < note.note_transforms.size(); i++) {
 			if (music_time < note.hit_times[i] - note_approach_time) {
 				continue; // not yet time to show this note
 			} else if (music_time > note.hit_times[i] + valid_hit_time_delta) {
 				note.note_transforms[i]->scale = glm::vec3(0.0f, 0.0f, 0.0f); // note already gone
 				// TODO: animation
+				indices.push_back(j);
 			} else {
 				// move note toward player
 				note.note_transforms[i]->scale = glm::vec3(0.1f, 0.1f, 0.1f);
@@ -250,6 +230,54 @@ void PlayMode::update_notes() {
 			}	
 		}
 	}
+	for(uint64_t i = 0; i < indices.size(); i++) {
+		notes.erase(notes.begin() + indices[i]);
+	}
+}
+
+/*
+Pseudocode:
+Get the position in screen space where the mouse is clicked
+Transform position to world space
+Make a ray from camera origin to position
+If we implement player camera movement, then ray would always be towards the center of the screen (or a fixed position somewhere idk specifics about fps)
+Shoot the ray and see if it hits a mesh
+If true, check the mesh name
+If mesh name contains substring of "note", then perform hit operation
+Check the distance from origin to position hit is the distance from camera origin to note hit plane (so you can't just shoot the center of the plane and be very close to the spawning of all the notes)
+Check the distance from the position of the mesh to where the ray hits and then determine "good", "great", "perfect"
+For normal note, we would then remove this mesh from list of meshes to be drawn
+For other notes, do something else
+If it doesn't, need to determine whether if we want to punish the player or not
+If we want to punish the player, we would need to determine how far away the closest note is
+*/
+
+// hackish code that only works for a sphere, need to come up with another way to detect collision as we don't have mesh info in a nice format
+// current idea: find smallest distance between ray and each note
+// since notes are made in time order, we can take the first one that we're close enough to
+// radius = scale
+hitInfo PlayMode::trace_ray(glm::vec3 ray) {
+	hitInfo hits;
+	hits.hit = false;
+	float dist = glm::length(ray);
+	// https://mathworld.wolfram.com/Point-LineDistance3-Dimensional.html
+	for (auto &note : notes) {
+		// assume we only have singles
+		if(note.noteType == NoteType::SINGLE) {
+			Scene::Transform *trans = note.note_transforms[0];
+			float radius = trans->scale.x;
+			float d = glm::length(glm::cross(trans->position, trans->position + ray)) / dist;
+			std::cout << ray.x << " " << ray.y << " " << ray.z << "\n";
+			std::cout << trans->position.x << " " << trans->position.y << " " << trans->position.z << "\n";
+			std::cout << radius << " d: " << d << "\n";
+			if(d < radius) {
+				hits.note = note;
+				return hits;
+			}
+		}
+	}
+	std::cout << notes.size() << " size\n";
+	return hits;
 }
 
 bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
@@ -266,8 +294,24 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 	}
 	else if (evt.type == SDL_MOUSEBUTTONDOWN) {
 		// TODO: hit note
+		// ray from camera position to origin (p1 - p2)
+		glm::vec3 ray = glm::vec3(0.f) - camera->transform->position;
+		// rotate ray
+		ray = camera->transform->rotation * ray;
+		std::cout << ray.x << " " << ray.y << " " << ray.z << "\n";
+		hitInfo hits = trace_ray(ray);
+		// if we hit a triangulated mesh
+		auto current_time = std::chrono::high_resolution_clock::now();
+		float music_time = std::chrono::duration<float>(current_time - music_start_time).count();
+		if(hits.hit) {
+			std::cout << music_time << "bye" << "\n";
+			std::cout << hits.note.hit_times[0] << "\n";
+		}
+		else {
+			std::cout << music_time << " hi" << "\n";
+			// std::cout << hits.note.hit_times[0] << "\n";
+		}
 	} else if (evt.type == SDL_MOUSEMOTION) {
-		// fix motion
 			glm::vec2 delta;
 			delta.x = evt.motion.xrel / float(window_size.x) * 2.0f;
 			delta.x *= float(window_size.y) / float(window_size.x);
@@ -333,18 +377,6 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 	glDepthFunc(GL_LESS); //this is the default depth comparison function, but FYI you can change it.
 
 	scene.draw(*camera);
-
-	/* In case you are wondering if your walkmesh is lining up with your scene, try:
-	{
-		glDisable(GL_DEPTH_TEST);
-		DrawLines lines(player.camera->make_projection() * glm::mat4(player.camera->transform->make_world_to_local()));
-		for (auto const &tri : walkmesh->triangles) {
-			lines.draw(walkmesh->vertices[tri.x], walkmesh->vertices[tri.y], glm::u8vec4(0x88, 0x00, 0xff, 0xff));
-			lines.draw(walkmesh->vertices[tri.y], walkmesh->vertices[tri.z], glm::u8vec4(0x88, 0x00, 0xff, 0xff));
-			lines.draw(walkmesh->vertices[tri.z], walkmesh->vertices[tri.x], glm::u8vec4(0x88, 0x00, 0xff, 0xff));
-		}
-	}
-	*/
 
 	{ //use DrawLines to overlay some text:
 		glDisable(GL_DEPTH_TEST);

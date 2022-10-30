@@ -27,6 +27,11 @@ struct NoteInfo {
 	NoteType noteType = NoteType::SINGLE;
 };
 
+struct hitInfo {
+	bool hit;
+	struct NoteInfo note;
+};
+
 struct PlayMode : Mode {
 	PlayMode();
 	virtual ~PlayMode();
@@ -47,9 +52,7 @@ struct PlayMode : Mode {
 	virtual void update_notes();
 
 	// cast a ray to detect collision with a mesh
-	// virtual bool trace_ray();
-	// // see if you hit the notes function
-	// virtual bool hit_notes();
+	virtual hitInfo trace_ray(glm::vec3 ray);
 
 	//----- game state -----
 
@@ -86,7 +89,8 @@ struct PlayMode : Mode {
 	float note_approach_time = 4.0f; // time between when the note shows up and hit time
 	float valid_hit_time_delta = 0.2f;
 
-	// from ShowSceneMode.hpp
+
+	// from ShowSceneMode.hpp to fix the up axis
 	struct {
 		float radius = 2.0f;
 		float azimuth = 0.0f; //angle ccw of -y axis, in radians, [-pi,pi]
