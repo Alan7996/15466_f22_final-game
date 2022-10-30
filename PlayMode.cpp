@@ -151,6 +151,7 @@ void PlayMode::read_notes() {
 			if (note_type == "hold") {
 				NoteInfo note;
 				note.noteType = NoteType::HOLD;
+				note.beenHit = false;
 				for (int i = 0; i < idx - 2; i++) {
 					float coord = std::stof(note_info[2+i]);
 					float time = std::stof(note_info[idx+1+i]);
@@ -183,6 +184,7 @@ void PlayMode::read_notes() {
 				
 				NoteInfo note;
 				note.noteType = type;
+				note.beenHit = false;
 				Scene::Transform *transform = new Scene::Transform;
 				transform->name = "Note";
 				transform->position = glm::vec3(coords.first, coords.second, init_note_depth);
@@ -221,6 +223,9 @@ void PlayMode::update_notes() {
 				note.note_transforms[i]->scale = glm::vec3(0.0f, 0.0f, 0.0f); // note already gone
 				// TODO: animation
 				indices.push_back(j);
+			} else if (note.beenHit){
+				note.note_transforms[i]->scale = glm::vec3(0.0f, 0.0f, 0.0f); // note been hit
+				indices.push_back(j);
 			} else {
 				// move note toward player
 				note.note_transforms[i]->scale = glm::vec3(0.1f, 0.1f, 0.1f);
@@ -236,32 +241,10 @@ void PlayMode::update_notes() {
 	}
 }
 
-/*
-Pseudocode:
-Get the position in screen space where the mouse is clicked
-Transform position to world space
-Make a ray from camera origin to position
-If we implement player camera movement, then ray would always be towards the center of the screen (or a fixed position somewhere idk specifics about fps)
-Shoot the ray and see if it hits a mesh
-If true, check the mesh name
-If mesh name contains substring of "note", then perform hit operation
-Check the distance from origin to position hit is the distance from camera origin to note hit plane (so you can't just shoot the center of the plane and be very close to the spawning of all the notes)
-Check the distance from the position of the mesh to where the ray hits and then determine "good", "great", "perfect"
-For normal note, we would then remove this mesh from list of meshes to be drawn
-For other notes, do something else
-If it doesn't, need to determine whether if we want to punish the player or not
-If we want to punish the player, we would need to determine how far away the closest note is
-*/
-
 // hackish code that only works for a sphere, need to come up with another way to detect collision as we don't have mesh info in a nice format
 // current idea: find smallest distance between ray and each note
 // since notes are made in time order, we can take the first one that we're close enough to
 // radius = scale
-
-// we have camera at 0, 0, 5 pointing in direction of 0, 0, 0 
-// we then rotate the camera to simulate an fps -> so this should be equivalent to rotating the above ray 
-// we have notes coming in 1, -0.8, very negative number -> 1, -0.8, 0
-// w
 hitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 	hitInfo hits;
 	hits.hit = false;
@@ -278,7 +261,7 @@ hitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 			// std::cout << radius << " d: " << d << "\n";
 			if(d < radius) {
 				hits.hit = true;
-				hits.note = note;
+				hits.note = &note;
 				return hits;
 			}
 		}
@@ -300,22 +283,30 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 		}
 	}
 	else if (evt.type == SDL_MOUSEBUTTONDOWN) {
-		// std::cout << camera->transform->position.x << " " << camera->transform->position.y << " " << camera->transform->position.z << "\n";
-		// TODO: hit note
 		// ray from camera position to origin (p1 - p2)
 		glm::vec3 ray = glm::vec3(0) - camera->transform->position;
-		// rotate ray
+		// rotate ray to get the direction from camera
 		ray = glm::rotate(camera->transform->rotation, ray);
+		// trace the ray to see if we hit a note
 		hitInfo hits = trace_ray(camera->transform->position, ray);
+
 		auto current_time = std::chrono::high_resolution_clock::now();
 		float music_time = std::chrono::duration<float>(current_time - music_start_time).count();
+		// if we hit a note, check to see if we hit a good time
 		if(hits.hit) {
 			std::cout << music_time << " bye" << "\n";
-			std::cout << hits.note.hit_times[0] << "\n";
+			std::cout << hits.note->hit_times[0] << "\n";
+			// valid hit time
+			if(fabs(music_time - hits.note->hit_times[0]) < valid_hit_time_delta) {
+				std::cout << "valid hit\n";
+				hits.note->beenHit = true;
+			}
+			else {
+				std::cout << "bad hit\n";
+			}
 		}
 		else {
-			std::cout << music_time << " hi" << "\n";
-			// std::cout << hits.note.hit_times[0] << "\n";
+			std::cout << "miss\n";
 		}
 	} else if (evt.type == SDL_MOUSEMOTION) {
 			glm::vec2 delta;

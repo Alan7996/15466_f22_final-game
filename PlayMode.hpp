@@ -25,11 +25,12 @@ struct NoteInfo {
 	std::vector<Scene::Transform *> note_transforms;
 	std::vector<float> hit_times;
 	NoteType noteType = NoteType::SINGLE;
+	bool beenHit;
 };
 
 struct hitInfo {
 	bool hit;
-	struct NoteInfo note;
+	struct NoteInfo *note;
 };
 
 struct PlayMode : Mode {

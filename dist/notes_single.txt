@@ -1,1 +1,4 @@
 single up    -0.8 @ 5.0
+single down  -0.8 @ 6.0
+single left  -0.8 @ 7.0
+single right -0.8 @ 8.0
