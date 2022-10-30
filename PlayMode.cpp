@@ -230,6 +230,7 @@ void PlayMode::update_notes() {
 			}	
 		}
 	}
+	// removes notes that are not valid anymore
 	for(uint64_t i = 0; i < indices.size(); i++) {
 		notes.erase(notes.begin() + indices[i]);
 	}
@@ -256,21 +257,27 @@ If we want to punish the player, we would need to determine how far away the clo
 // current idea: find smallest distance between ray and each note
 // since notes are made in time order, we can take the first one that we're close enough to
 // radius = scale
-hitInfo PlayMode::trace_ray(glm::vec3 ray) {
+
+// we have camera at 0, 0, 5 pointing in direction of 0, 0, 0 
+// we then rotate the camera to simulate an fps -> so this should be equivalent to rotating the above ray 
+// we have notes coming in 1, -0.8, very negative number -> 1, -0.8, 0
+// w
+hitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 	hitInfo hits;
 	hits.hit = false;
-	float dist = glm::length(ray);
+	float dist = glm::length(dir);
 	// https://mathworld.wolfram.com/Point-LineDistance3-Dimensional.html
 	for (auto &note : notes) {
 		// assume we only have singles
 		if(note.noteType == NoteType::SINGLE) {
 			Scene::Transform *trans = note.note_transforms[0];
 			float radius = trans->scale.x;
-			float d = glm::length(glm::cross(trans->position, trans->position + ray)) / dist;
-			std::cout << ray.x << " " << ray.y << " " << ray.z << "\n";
-			std::cout << trans->position.x << " " << trans->position.y << " " << trans->position.z << "\n";
-			std::cout << radius << " d: " << d << "\n";
+			float d = glm::length(glm::cross(trans->position - pos, trans->position - (pos + dir))) / dist;
+			// std::cout << ray.x << " " << ray.y << " " << ray.z << "\n";
+			// std::cout << trans->position.x << " " << trans->position.y << " " << trans->position.z << "\n";
+			// std::cout << radius << " d: " << d << "\n";
 			if(d < radius) {
+				hits.hit = true;
 				hits.note = note;
 				return hits;
 			}
@@ -293,18 +300,17 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 		}
 	}
 	else if (evt.type == SDL_MOUSEBUTTONDOWN) {
+		// std::cout << camera->transform->position.x << " " << camera->transform->position.y << " " << camera->transform->position.z << "\n";
 		// TODO: hit note
 		// ray from camera position to origin (p1 - p2)
-		glm::vec3 ray = glm::vec3(0.f) - camera->transform->position;
+		glm::vec3 ray = glm::vec3(0) - camera->transform->position;
 		// rotate ray
-		ray = camera->transform->rotation * ray;
-		std::cout << ray.x << " " << ray.y << " " << ray.z << "\n";
-		hitInfo hits = trace_ray(ray);
-		// if we hit a triangulated mesh
+		ray = glm::rotate(camera->transform->rotation, ray);
+		hitInfo hits = trace_ray(camera->transform->position, ray);
 		auto current_time = std::chrono::high_resolution_clock::now();
 		float music_time = std::chrono::duration<float>(current_time - music_start_time).count();
 		if(hits.hit) {
-			std::cout << music_time << "bye" << "\n";
+			std::cout << music_time << " bye" << "\n";
 			std::cout << hits.note.hit_times[0] << "\n";
 		}
 		else {

@@ -52,7 +52,7 @@ struct PlayMode : Mode {
 	virtual void update_notes();
 
 	// cast a ray to detect collision with a mesh
-	virtual hitInfo trace_ray(glm::vec3 ray);
+	virtual hitInfo trace_ray(glm::vec3 pos, glm::vec3 dir);
 
 	//----- game state -----
 
