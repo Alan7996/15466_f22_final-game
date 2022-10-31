@@ -74,7 +74,7 @@ PlayMode::PlayMode() : scene(*main_scene) {
 			border_drawable.count = d.pipeline.count;
 		} 
 	}
-	
+
 	beatmap_skins.emplace_back(std::make_pair("Note", default_skin));
 	scene.drawables.clear();
 
@@ -257,7 +257,7 @@ void PlayMode::update_notes() {
 		auto &note = notes[i];
 		for (int j = 0; j < (int)note.note_transforms.size(); j++) {
 			if (note.isActive) {
-				if (music_time > note.hit_times[j] + valid_hit_time_delta) {
+				if (music_time > note.hit_times[j] + valid_hit_time_delta + real_song_offset) {
 					// 'delete' the note
 					note.note_transforms[j]->scale = glm::vec3(0.0f, 0.0f, 0.0f);
 					note_start_idx += 1;
@@ -266,7 +266,7 @@ void PlayMode::update_notes() {
 				}
 			} else {
 				if (!note.beenHit) {
-					if (music_time >= note.hit_times[j] - note_approach_time) {
+					if (music_time >= note.hit_times[j] - note_approach_time + real_song_offset) {
 						// spawn the note
 						note.isActive = true;
 						note.note_transforms[j]->scale = glm::vec3(0.1f, 0.1f, 0.1f);
@@ -423,7 +423,7 @@ void PlayMode::check_hit() {
 		std::cout << music_time << " bye" << "\n";
 		std::cout << hits.note->hit_times[0] << "\n";
 		// valid hit time
-		if(fabs(music_time - hits.note->hit_times[0]) < valid_hit_time_delta) {
+		if(fabs(music_time - hits.note->hit_times[0] + real_song_offset) < valid_hit_time_delta) {
 			std::cout << "valid hit\n";
 			hit_note(hits.note);
 		}
@@ -571,8 +571,8 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 		delta.x *= float(window_size.y) / float(window_size.x);
 		delta.y = evt.motion.yrel / float(window_size.y) * -2.0f;
 
-		cam.azimuth -= 0.3f * delta.x;
-		cam.elevation -= 0.3f * delta.y;
+		cam.azimuth -= 0.4f * delta.x;
+		cam.elevation -= 0.4f * delta.y;
 
 		cam.azimuth /= 2.0f * 3.1415926f;
 		cam.azimuth -= std::round(cam.azimuth);
