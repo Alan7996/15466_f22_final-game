@@ -379,7 +379,21 @@ HitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 			}
 		}
 		// burst type
+		// currently we have one model containing all three notes
+		// this means we can shoot anything in between the three notes and it would count as a hit
+		// will need to change to adding two additional drawables for vertical slice
 		else if(note.noteType == NoteType::BURST) {
+			// get transform
+			Scene::Transform *trans = note.note_transforms[0];
+			// transform bounding box of note to world space
+			glm::vec3 trans_min = trans->make_local_to_parent() * glm::vec4(note.min, 1.f);
+			glm::vec3 trans_max = trans->make_local_to_parent() * glm::vec4(note.max, 1.f);
+			// do bbox intersection
+			if(bbox_intersect(pos, dir, trans_min, trans_max)) {
+				HitInfo hits;
+				hits.note = &notes[i];
+				return hits;
+			}
 		}
 		// hold type
 		else if(note.noteType == NoteType::HOLD) {
