@@ -50,15 +50,20 @@ Load< Sound::Sample > load_song_tutorial(LoadTagDefault, []() -> Sound::Sample c
 PlayMode::PlayMode() : scene(*main_scene) {
 	SDL_SetRelativeMouseMode(SDL_TRUE);
 
+	meshBuf = new MeshBuffer(data_path("main.pnct"));
+
 	// camera and assets
 	if (scene.cameras.size() != 1) throw std::runtime_error("Expecting scene to have exactly one camera, but it has " + std::to_string(scene.cameras.size()));
 	camera = &scene.cameras.front();
 
+	std::vector<Drawable> default_skin(15);
 	for (auto &d : scene.drawables) {
-		if (d.transform->name == "Note") {
-			note_drawable.type = d.pipeline.type;
-			note_drawable.start = d.pipeline.start;
-			note_drawable.count = d.pipeline.count;
+		if (d.transform->name.find("Note") != std::string::npos) {
+			// set up default skin array
+			int idx = d.transform->name.at(4) - '0';
+			default_skin[idx].type = d.pipeline.type;
+			default_skin[idx].start = d.pipeline.start;
+			default_skin[idx].count = d.pipeline.count;
 		} else if (d.transform->name == "Gun") {
 			gun_drawable.type = d.pipeline.type;
 			gun_drawable.start = d.pipeline.start;
@@ -69,6 +74,8 @@ PlayMode::PlayMode() : scene(*main_scene) {
 			border_drawable.count = d.pipeline.count;
 		} 
 	}
+	
+	beatmap_skins.emplace_back(std::make_pair("Note", default_skin));
 	scene.drawables.clear();
 
 	{ // initialize game state
@@ -167,16 +174,21 @@ void PlayMode::read_notes(std::string song_name) {
 			tokenize(line, delim, note_info);
 
 			std::string note_type = note_info[0];
-			std::string dir = note_info[1];
+			int note_mesh_idx = stoi(note_info[1]);
+			std::string dir = note_info[2];
 			int idx = (int) (find(note_info.begin(), note_info.end(), "@") - note_info.begin());
 
 			NoteInfo note;
+			Mesh note_mesh = meshBuf->lookup(beatmap_skins[active_skin_idx].first + note_info[1]);
+			note.min = note_mesh.min;
+			note.max = note_mesh.max;
+			// this requires a bit more thinking on how to handle hold notes
 
 			if (note_type == "hold") {
 				note.noteType = NoteType::HOLD;
 
-				for (int i = 0; i < idx - 2; i++) {
-					float coord = std::stof(note_info[2+i]);
+				for (int i = 0; i < idx - 3; i++) {
+					float coord = std::stof(note_info[3+i]);
 					float time = std::stof(note_info[idx+1+i]);
 					std::pair<float, float> coords = get_coords(dir, coord);
 
@@ -189,8 +201,8 @@ void PlayMode::read_notes(std::string song_name) {
 					note.hit_times.push_back(time);
 				}
 			} else {
-				float coord = std::stof(note_info[2]);
-				float time = std::stof(note_info[4]);
+				float coord = std::stof(note_info[3]);
+				float time = std::stof(note_info[5]);
 				std::pair<float, float> coords = get_coords(dir, coord);
 				
 				note.noteType = note_type == "single" ? NoteType::SINGLE : NoteType::BURST;
@@ -211,9 +223,9 @@ void PlayMode::read_notes(std::string song_name) {
 				Scene::Drawable &d = scene.drawables.back();
 				d.pipeline = lit_color_texture_program_pipeline;
 				d.pipeline.vao = main_meshes_for_lit_color_texture_program;
-				d.pipeline.type = note_drawable.type;
-				d.pipeline.start = note_drawable.start;
-				d.pipeline.count = note_drawable.count;
+				d.pipeline.type = beatmap_skins[active_skin_idx].second[note_mesh_idx].type;
+				d.pipeline.start = beatmap_skins[active_skin_idx].second[note_mesh_idx].start;
+				d.pipeline.count = beatmap_skins[active_skin_idx].second[note_mesh_idx].count;
 			}
 		}
 		file.close();
@@ -249,6 +261,8 @@ void PlayMode::update_notes() {
 					// 'delete' the note
 					note.note_transforms[j]->scale = glm::vec3(0.0f, 0.0f, 0.0f);
 					note_start_idx += 1;
+
+					if (note_start_idx == (int)notes.size()) game_over(true);
 				}
 			} else {
 				if (!note.beenHit) {
@@ -257,8 +271,6 @@ void PlayMode::update_notes() {
 						note.isActive = true;
 						note.note_transforms[j]->scale = glm::vec3(0.1f, 0.1f, 0.1f);
 						note_end_idx += 1;
-
-						if (note_end_idx == (int)notes.size()) game_over(true);
 					} else {
 						continue;
 					}
@@ -355,7 +367,7 @@ void PlayMode::to_menu() {
 }
 
 // start_song should only be called when going from MENU -> PLAYING or in restart_song
-void PlayMode::start_song(int idx) {
+void PlayMode::start_song(int idx, bool restart) {
 	if (has_started) return;
 
 	reset_cam();
@@ -371,7 +383,7 @@ void PlayMode::start_song(int idx) {
 	music_start_time = std::chrono::high_resolution_clock::now(); // might want to reconsider if we want buffer time between starting the song and loading the level
 
 	// choose the song based on index
-	read_notes(song_list[idx].first);
+	if (!restart) read_notes(song_list[idx].first);
 	active_song = Sound::play(song_list[idx].second);
 }
 
@@ -389,7 +401,7 @@ void PlayMode::restart_song() {
 	}
 
 	has_started = false;
-	start_song(chosen_song);
+	start_song(chosen_song, true);
 }
 
 // pause_song should only be called when going from PLAYING -> PAUSED
@@ -404,6 +416,7 @@ void PlayMode::pause_song() {
 void PlayMode::unpause_song() {
 	// TODO : need to actually figure out how to unpause song
 	gameState = PLAYING;
+	SDL_SetRelativeMouseMode(SDL_TRUE);
 	auto current_time = std::chrono::high_resolution_clock::now();
 	music_start_time += current_time - music_pause_time;
 }
@@ -421,7 +434,7 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 	if (evt.type == SDL_KEYDOWN) {
 		if (gameState == MENU) {
 			if (evt.key.keysym.sym == SDLK_RETURN) {
-				start_song(hovering_text);
+				start_song(hovering_text, false);
 				return true;
 			} else if (evt.key.keysym.sym == SDLK_UP) {
 				hovering_text = hovering_text == 0 ? 0 : hovering_text - 1;

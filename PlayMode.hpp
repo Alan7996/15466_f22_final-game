@@ -3,6 +3,7 @@
 #include "Scene.hpp"
 #include "WalkMesh.hpp"
 #include "Sound.hpp"
+#include "Mesh.hpp"
 
 #include <glm/glm.hpp>
 
@@ -26,6 +27,10 @@ struct NoteInfo {
 	std::vector<Scene::Transform *> note_transforms;
 	std::vector<float> hit_times;
 	NoteType noteType = NoteType::SINGLE;
+
+	glm::vec3 min = glm::vec3();
+	glm::vec3 max = glm::vec3();
+
 	// We need both beenHit and isActive because otherwise notes that has been
 	// hit will keep re-activating
 	bool beenHit = false;
@@ -66,7 +71,7 @@ struct PlayMode : Mode {
 
 	// game state related
 	void to_menu();
-	void start_song(int idx);
+	void start_song(int idx, bool restart);
 	void restart_song();
 	void pause_song();
 	void unpause_song();
@@ -92,8 +97,12 @@ struct PlayMode : Mode {
 
 	// assets
 	// TODO : edit so that gun and border_drawable's are not drawn in menu
-	Drawable note_drawable;
+	MeshBuffer const *meshBuf;
+
 	std::vector<NoteInfo> notes;
+	
+	std::vector< std::pair<std::string, std::vector<Drawable>> > beatmap_skins;
+	int active_skin_idx = 0;
 
 	Drawable gun_drawable;
 	Scene::Transform *gun_transform = nullptr;
