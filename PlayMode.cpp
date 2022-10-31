@@ -172,7 +172,7 @@ void PlayMode::read_notes(std::string song_name) {
 			if (note_type == "hold") {
 				note.noteType = NoteType::HOLD;
 
-				for (int i = 0; i < idx - 2; i++) { // question : why is this -2 and not -1?
+				for (int i = 0; i < idx - 2; i++) {
 					float coord = std::stof(note_info[2+i]);
 					float time = std::stof(note_info[idx+1+i]);
 					std::pair<float, float> coords = get_coords(dir, coord);
@@ -554,24 +554,35 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 			for (int i = hovering_text - 2; i < hovering_text + 3; i++) {
 				if (i < 0 || i >= (int)song_list.size()) continue;
 				// todo : these offsets need to be fixed...
-				lines.draw_text(song_list[i].first, 
+				std::string text = song_list[i].first;
+				if (i == hovering_text) {
+					text = "-> " + text;
+				}
+				lines.draw_text(text, 
 					glm::vec3(-aspect + 0.5f + ofs, -1.0 + + (float(hovering_text + 3) - float(i)) * float(drawable_size.y) / 20.0f * 0.1f * H + ofs, 0.0),
 					glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 					glm::u8vec4(0xff, 0xff, 0xff, 0x00));
 			}
 		} else if (gameState == PLAYING) {
+			// crosshair
 			for (uint32_t a = 0; a < circle.size(); ++a) {
-				lines.draw(
-					glm::vec3(camera->transform->position.x + 0.02f * circle[a], 0.0f),
-					glm::vec3(camera->transform->position.y + 0.02f * circle[(a+1)%circle.size()], 0.0f),
-					glm::u8vec4(0xff, 0xff, 0xff, 0x00)
-				);
+				for (float r = 0.02f; r >= 0.015f; r -= 0.001f) {
+					lines.draw(
+						glm::vec3(camera->transform->position.x + r * circle[a], 0.0f),
+						glm::vec3(camera->transform->position.y + r * circle[(a+1)%circle.size()], 0.0f),
+						glm::u8vec4(0xff, 0x00, 0x00, 0x00)
+					);
+				}
 			}
 		} else if (gameState == PAUSED) {
 			for (int i = hovering_text - 2; i < hovering_text + 3; i++) {
 				if (i < 0 || i >= (int)option_texts.size()) continue;
 				// todo : these offsets need to be fixed...
-				lines.draw_text(option_texts[i], 
+				std::string text = option_texts[i];
+				if (i == hovering_text) {
+					text = "-> " + text;
+				}
+				lines.draw_text(text, 
 					glm::vec3(-aspect + 0.5f + ofs, -1.0 + + (float(hovering_text + 3) - float(i)) * float(drawable_size.y) / 20.0f * 0.1f * H + ofs, 0.0),
 					glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 					glm::u8vec4(0xff, 0xff, 0xff, 0x00));
