@@ -42,11 +42,18 @@ Load< Scene > main_scene(LoadTagDefault, []() -> Scene const * {
 	});
 });
 
+// would like to generalize this load_song function to take in string input and load string.wav file
+Load< Sound::Sample > load_song_tutorial(LoadTagDefault, []() -> Sound::Sample const * {
+	return new Sound::Sample(data_path("Tutorial.wav"));
+});
+
 PlayMode::PlayMode() : scene(*main_scene) {
-	// camera and assets
 	SDL_SetRelativeMouseMode(SDL_TRUE);
+
+	// camera and assets
 	if (scene.cameras.size() != 1) throw std::runtime_error("Expecting scene to have exactly one camera, but it has " + std::to_string(scene.cameras.size()));
 	camera = &scene.cameras.front();
+
 	for (auto &d : scene.drawables) {
 		if (d.transform->name == "Note") {
 			note_drawable.type = d.pipeline.type;
@@ -89,35 +96,22 @@ PlayMode::PlayMode() : scene(*main_scene) {
 		d2.pipeline.start = border_drawable.start;
 		d2.pipeline.count = border_drawable.count;
 
-		read_notes();
+		// would be nice to count the number of songs / know their names by reading through the file system
+		// all tutorial songs for testing purposes for now
+		song_list.emplace_back(std::make_pair("Tutorial", *load_song_tutorial));
+		song_list.emplace_back(std::make_pair("Tutorial2", *load_song_tutorial));
+		song_list.emplace_back(std::make_pair("Tutorial3", *load_song_tutorial));
+		song_list.emplace_back(std::make_pair("Tutorial4", *load_song_tutorial));
+		song_list.emplace_back(std::make_pair("Tutorial5", *load_song_tutorial));
+		song_list.emplace_back(std::make_pair("Tutorial6", *load_song_tutorial));
+		song_list.emplace_back(std::make_pair("Tutorial7", *load_song_tutorial));
+
+		to_menu();
 	}
 }
 
 PlayMode::~PlayMode() {
 }
-
-/*
-Pseudocode:
-Get the position in screen space where the mouse is clicked
-Transform position to world space
-Make a ray from camera origin to position
-If we implement player camera movement, then ray would always be towards the center of the screen (or a fixed position somewhere idk specifics about fps)
-Shoot the ray and see if it hits a mesh
-If true, check the mesh name
-If mesh name contains substring of "note", then perform hit operation
-Check the distance from origin to position hit is the distance from camera origin to note hit plane (so you can't just shoot the center of the plane and be very close to the spawning of all the notes)
-Check the distance from the position of the mesh to where the ray hits and then determine "good", "great", "perfect"
-For normal note, we would then remove this mesh from list of meshes to be drawn
-For other notes, do something else
-If it doesn't, need to determine whether if we want to punish the player or not
-If we want to punish the player, we would need to determine how far away the closest note is
-*/
-// bool trace_ray() {
-// 	return false;
-// }
-// bool hit_notes() {
-// 	return false;
-// }
 
 
 // https://java2blog.com/split-string-space-cpp/
@@ -158,23 +152,27 @@ std::pair<float, float> PlayMode::get_coords(std::string dir, float coord) {
 	return std::make_pair(x, y);
 }
 
-void PlayMode::read_notes() {
+void PlayMode::read_notes(std::string song_name) {
 	// https://www.tutorialspoint.com/read-file-line-by-line-using-cplusplus
 	std::fstream file;
 	const char* delim = " ";
-	file.open(data_path("notes.txt"), std::ios::in);
+	file.open(data_path(song_name + ".txt"), std::ios::in);
 	if (file.is_open()){
 		std::string line;
 		while(getline(file, line)){
 			std::vector<std::string> note_info;
 			tokenize(line, delim, note_info);
+
 			std::string note_type = note_info[0];
 			std::string dir = note_info[1];
 			int idx = (int) (find(note_info.begin(), note_info.end(), "@") - note_info.begin());
+
+			NoteInfo note;
+
 			if (note_type == "hold") {
-				NoteInfo note;
 				note.noteType = NoteType::HOLD;
-				for (int i = 0; i < idx - 2; i++) {
+
+				for (int i = 0; i < idx - 2; i++) { // question : why is this -2 and not -1?
 					float coord = std::stof(note_info[2+i]);
 					float time = std::stof(note_info[idx+1+i]);
 					std::pair<float, float> coords = get_coords(dir, coord);
@@ -183,38 +181,30 @@ void PlayMode::read_notes() {
 					transform->name = "Note";
 					transform->position = glm::vec3(coords.first, coords.second, init_note_depth);
 					transform->scale = glm::vec3(0.0f, 0.0f, 0.0f); // all notes start from being invisible
+
 					note.note_transforms.push_back(transform);
 					note.hit_times.push_back(time);
-				}
-				notes.push_back(note);
-
-				for (uint64_t i = 0; i < note.note_transforms.size(); i++) {
-					scene.drawables.emplace_back(note.note_transforms[i]);
-					Scene::Drawable &d = scene.drawables.back();
-					d.pipeline = lit_color_texture_program_pipeline;
-					d.pipeline.vao = main_meshes_for_lit_color_texture_program;
-					d.pipeline.type = note_drawable.type;
-					d.pipeline.start = note_drawable.start;
-					d.pipeline.count = note_drawable.count;
 				}
 			} else {
 				float coord = std::stof(note_info[2]);
 				float time = std::stof(note_info[4]);
-				NoteType type = NoteType::SINGLE;
-				if (note_type == "burst") type = NoteType::BURST;
 				std::pair<float, float> coords = get_coords(dir, coord);
 				
-				NoteInfo note;
-				note.noteType = type;
+				note.noteType = note_type == "single" ? NoteType::SINGLE : NoteType::BURST;
+
 				Scene::Transform *transform = new Scene::Transform;
 				transform->name = "Note";
 				transform->position = glm::vec3(coords.first, coords.second, init_note_depth);
 				transform->scale = glm::vec3(0.0f, 0.0f, 0.0f); // all notes start from being invisible
+
 				note.note_transforms.push_back(transform);
 				note.hit_times.push_back(time);
-				notes.push_back(note);
+			}
 
-				scene.drawables.emplace_back(note.note_transforms[0]);
+			notes.push_back(note);
+
+			for (int i = 0; i < (int)note.note_transforms.size(); i++) {
+				scene.drawables.emplace_back(note.note_transforms[i]);
 				Scene::Drawable &d = scene.drawables.back();
 				d.pipeline = lit_color_texture_program_pipeline;
 				d.pipeline.vao = main_meshes_for_lit_color_texture_program;
@@ -227,62 +217,271 @@ void PlayMode::read_notes() {
 	}
 }
 
+
+/* We maintain the list of notes to be checked in the following way : 
+ * We keep track of two types of variables. First are note_start_idx and 
+ * note_end_idx, which records the range of notes that have spawned but have
+ * yet to reach the disappearing line. Second are each note's isActive boolean,
+ * which if a note was correctly hit by the player should toggle to false and
+ * make the note have 0 scale. We however do not immediately update the indices,
+ * meaning the note will continue to move towards the player until it reaches the
+ * disappearing line. This is so that we can keep a nice loop from start to end
+ * indices without worrying about tight time gaps between notes. 
+ * 
+ * Also note that we always loop up to ONE INDEX HIGHER than the end index, to
+ * check if we should start the next note or not.
+*/
 void PlayMode::update_notes() {
-	if (!has_started) {
-		return;
-	}
+	if (gameState != PLAYING) return;
+
 	auto current_time = std::chrono::high_resolution_clock::now();
 	float music_time = std::chrono::duration<float>(current_time - music_start_time).count();
-
-	for (auto &note : notes) {
-		for (uint64_t i = 0; i < note.note_transforms.size(); i++) {
-			if (music_time < note.hit_times[i] - note_approach_time) {
-				continue; // not yet time to show this note
-			} else if (music_time > note.hit_times[i] + valid_hit_time_delta) {
-				note.note_transforms[i]->scale = glm::vec3(0.0f, 0.0f, 0.0f); // note already gone
-				// TODO: animation
+	
+	for (int i = note_start_idx; i < note_end_idx + 1; i++) {
+		if (i >= (int)notes.size()) continue;
+		auto &note = notes[i];
+		for (int j = 0; j < (int)note.note_transforms.size(); j++) {
+			if (note.isActive) {
+				if (music_time > note.hit_times[j] + valid_hit_time_delta) {
+					// 'delete' the note
+					note.note_transforms[j]->scale = glm::vec3(0.0f, 0.0f, 0.0f);
+					note_start_idx += 1;
+				}
 			} else {
-				// move note toward player
-				note.note_transforms[i]->scale = glm::vec3(0.1f, 0.1f, 0.1f);
-				float delta_time = music_time - (note.hit_times[i] - note_approach_time);
-				float note_speed = (border_depth - init_note_depth) / note_approach_time;
-				note.note_transforms[i]->position.z = init_note_depth + note_speed * delta_time;
-			}	
+				if (!note.beenHit) {
+					if (music_time >= note.hit_times[j] - note_approach_time) {
+						// spawn the note
+						note.isActive = true;
+						note.note_transforms[j]->scale = glm::vec3(0.1f, 0.1f, 0.1f);
+						note_end_idx += 1;
+
+						if (note_end_idx == (int)notes.size()) game_over(true);
+					} else {
+						continue;
+					}
+				}
+			}
+
+			// move the note
+			float delta_time = music_time - (note.hit_times[j] - note_approach_time);
+			float note_speed = (border_depth - init_note_depth) / note_approach_time;
+			note.note_transforms[j]->position.z = init_note_depth + note_speed * delta_time;
 		}
+	}
+}
+
+void PlayMode::hit_note(NoteInfo* note) {
+	// deactivate the note
+	note->beenHit = true;
+	note->isActive = false;
+
+	// TODO : fix this for hold
+	note->note_transforms[0]->scale = glm::vec3(0.0f, 0.0f, 0.0f);
+
+	// increment score & health
+
+}
+
+// hackish code that only works for a sphere, need to come up with another way to detect collision as we don't have mesh info in a nice format
+// current idea: find smallest distance between ray and each note
+// since notes are made in time order, we can take the first one that we're close enough to
+// radius = scale
+HitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
+	float dist = glm::length(dir);
+
+	// https://mathworld.wolfram.com/Point-LineDistance3-Dimensional.html
+	for (int i = note_start_idx; i < note_end_idx; i++) {
+		// assume we only have singles
+		if (notes[i].noteType == NoteType::SINGLE) {
+			Scene::Transform *trans = notes[i].note_transforms[0];
+			float radius = trans->scale.x;
+			float d = glm::length(glm::cross(trans->position - pos, trans->position - (pos + dir))) / dist;
+			// std::cout << ray.x << " " << ray.y << " " << ray.z << "\n";
+			// std::cout << trans->position.x << " " << trans->position.y << " " << trans->position.z << "\n";
+			// std::cout << radius << " d: " << d << "\n";
+			if(d < radius) {
+				HitInfo hits;
+				hits.note = &notes[i];
+				return hits;
+			}
+		}
+	}
+	
+	return HitInfo();
+}
+
+void PlayMode::check_hit() {
+	// ray from camera position to origin (p1 - p2)
+	glm::vec3 ray = glm::vec3(0) - camera->transform->position;
+	// rotate ray to get the direction from camera
+	ray = glm::rotate(camera->transform->rotation, ray);
+	// trace the ray to see if we hit a note
+	HitInfo hits = trace_ray(camera->transform->position, ray);
+
+	auto current_time = std::chrono::high_resolution_clock::now();
+	float music_time = std::chrono::duration<float>(current_time - music_start_time).count();
+	// if we hit a note, check to see if we hit a good time
+	if(hits.note) {
+		std::cout << music_time << " bye" << "\n";
+		std::cout << hits.note->hit_times[0] << "\n";
+		// valid hit time
+		if(fabs(music_time - hits.note->hit_times[0]) < valid_hit_time_delta) {
+			std::cout << "valid hit\n";
+			hit_note(hits.note);
+		}
+		else {
+			std::cout << "bad hit\n";
+		}
+	}
+	else {
+		std::cout << "miss\n";
+	}
+}
+
+// to_menu should be called either when the game is launched or when going from PLAYING -> PAUSED -> select EXIT
+void PlayMode::to_menu() {
+	// reset all state variables
+	has_started = false;
+	gameState = MENU;
+	hovering_text = (uint8_t)chosen_song;
+
+	reset_cam();
+
+	// stop currently playing song
+	if (active_song) active_song->stop();
+}
+
+// start_song should only be called when going from MENU -> PLAYING or in restart_song
+void PlayMode::start_song(int idx) {
+	if (has_started) return;
+
+	reset_cam();
+	SDL_SetRelativeMouseMode(SDL_TRUE);
+
+	note_start_idx = 0;
+	note_end_idx = 0;
+
+	has_started = true;
+	gameState = PLAYING;
+	chosen_song = idx;
+
+	music_start_time = std::chrono::high_resolution_clock::now(); // might want to reconsider if we want buffer time between starting the song and loading the level
+
+	// choose the song based on index
+	read_notes(song_list[idx].first);
+	active_song = Sound::play(song_list[idx].second);
+}
+
+// restart_song should only be called when going from PLAYING -> PAUSED -> select RESTART
+void PlayMode::restart_song() {
+	// reset loaded assets
+	active_song->stop();
+	for (auto &note: notes) {
+		note.beenHit = false;
+		note.isActive = false;
+		for (uint64_t i = 0; i < note.note_transforms.size(); i++) {
+			note.note_transforms[i]->position = glm::vec3(note.note_transforms[i]->position.x, note.note_transforms[i]->position.y, init_note_depth);
+			note.note_transforms[i]->scale = glm::vec3(0.0f, 0.0f, 0.0f);
+		}
+	}
+
+	has_started = false;
+	start_song(chosen_song);
+}
+
+// pause_song should only be called when going from PLAYING -> PAUSED
+void PlayMode::pause_song() {
+	// TODO : need to actually figure out how to pause song
+	gameState = PAUSED;
+	hovering_text = 0;
+	music_pause_time = std::chrono::high_resolution_clock::now();
+}
+
+// unpause_song should only be called when going from PLAYING -> PAUSED -> select RESUME
+void PlayMode::unpause_song() {
+	// TODO : need to actually figure out how to unpause song
+	gameState = PLAYING;
+	auto current_time = std::chrono::high_resolution_clock::now();
+	music_start_time += current_time - music_pause_time;
+}
+
+void PlayMode::game_over(bool didClear) {
+	if (didClear) {
+		std::cout << "song cleared!\n";
+	} else {
+		std::cout << "song failed!\n";
 	}
 }
 
 bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
 
 	if (evt.type == SDL_KEYDOWN) {
-		if (evt.key.keysym.sym == SDLK_RETURN) {
-			// start game
-			if (!has_started) {
-				has_started = true;
-				music_start_time = std::chrono::high_resolution_clock::now();
+		if (gameState == MENU) {
+			if (evt.key.keysym.sym == SDLK_RETURN) {
+				start_song(hovering_text);
+				return true;
+			} else if (evt.key.keysym.sym == SDLK_UP) {
+				hovering_text = hovering_text == 0 ? 0 : hovering_text - 1;
+				return true;
+			} else if (evt.key.keysym.sym == SDLK_DOWN) {
+				hovering_text = hovering_text == static_cast<uint8_t>(song_list.size()) - 1? static_cast<uint8_t>(song_list.size()) - 1: hovering_text + 1;
+				return true;
+			} else if (evt.key.keysym.sym == SDLK_ESCAPE) {
+				// press Exit key to close application, might want to change in future
+				exit(0);
+				return true;
 			}
-			return true;
+		} else if (gameState == PLAYING) {
+			if (evt.key.keysym.sym == SDLK_z || evt.key.keysym.sym == SDLK_x) {
+				check_hit();
+				return true;
+			} else if (evt.key.keysym.sym == SDLK_ESCAPE) {
+				SDL_SetRelativeMouseMode(SDL_FALSE);
+				pause_song();
+				return true;
+			}
+		} else if (gameState == PAUSED) {
+			if (evt.key.keysym.sym == SDLK_RETURN) {
+				if (hovering_text == 0) {unpause_song(); return true;}
+				else if (hovering_text == 1) {restart_song(); return true;}
+				else if (hovering_text == 2) {to_menu(); return true;}
+			}
+			else if (evt.key.keysym.sym == SDLK_UP) {
+				hovering_text = hovering_text == 0 ? 0 : hovering_text - 1;
+				return true;
+			} else if (evt.key.keysym.sym == SDLK_DOWN) {
+				hovering_text = hovering_text == static_cast<uint8_t>(option_texts.size()) - 1? static_cast<uint8_t>(option_texts.size()) - 1: hovering_text + 1;
+				return true;
+			}if (evt.key.keysym.sym == SDLK_ESCAPE) {
+				SDL_SetRelativeMouseMode(SDL_FALSE);
+				unpause_song();
+				return true;
+			}
 		}
 	}
 	else if (evt.type == SDL_MOUSEBUTTONDOWN) {
-		// TODO: hit note
+		SDL_SetRelativeMouseMode(SDL_TRUE);
+		if (gameState != PLAYING) return true;
+
+		check_hit();		
 	} else if (evt.type == SDL_MOUSEMOTION) {
-		// fix motion
-			glm::vec2 delta;
-			delta.x = evt.motion.xrel / float(window_size.x) * 2.0f;
-			delta.x *= float(window_size.y) / float(window_size.x);
-			delta.y = evt.motion.yrel / float(window_size.y) * -2.0f;
+		if (gameState != PLAYING) return true;
+		
+		glm::vec2 delta;
+		delta.x = evt.motion.xrel / float(window_size.x) * 2.0f;
+		delta.x *= float(window_size.y) / float(window_size.x);
+		delta.y = evt.motion.yrel / float(window_size.y) * -2.0f;
 
-			cam.azimuth -= 0.3f * delta.x;
-			cam.elevation -= 0.3f * delta.y;
+		cam.azimuth -= 0.3f * delta.x;
+		cam.elevation -= 0.3f * delta.y;
 
-			cam.azimuth /= 2.0f * 3.1415926f;
-			cam.azimuth -= std::round(cam.azimuth);
-			cam.azimuth *= 2.0f * 3.1415926f;
+		cam.azimuth /= 2.0f * 3.1415926f;
+		cam.azimuth -= std::round(cam.azimuth);
+		cam.azimuth *= 2.0f * 3.1415926f;
 
-			cam.elevation /= 2.0f * 3.1415926f;
-			cam.elevation -= std::round(cam.elevation);
-			cam.elevation *= 2.0f * 3.1415926f;
+		cam.elevation /= 2.0f * 3.1415926f;
+		cam.elevation -= std::round(cam.elevation);
+		cam.elevation *= 2.0f * 3.1415926f;
 
 		return true;
 	}
@@ -290,13 +489,9 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 }
 
 void PlayMode::update(float elapsed) {
-	//reset button press counters:
-	left.downs = 0;
-	right.downs = 0;
-	up.downs = 0;
-	down.downs = 0;
-
-	update_notes();
+	if (gameState == PLAYING) {
+		update_notes();
+	}
 }
 
 void PlayMode::draw(glm::uvec2 const &drawable_size) {
@@ -334,18 +529,6 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 
 	scene.draw(*camera);
 
-	/* In case you are wondering if your walkmesh is lining up with your scene, try:
-	{
-		glDisable(GL_DEPTH_TEST);
-		DrawLines lines(player.camera->make_projection() * glm::mat4(player.camera->transform->make_world_to_local()));
-		for (auto const &tri : walkmesh->triangles) {
-			lines.draw(walkmesh->vertices[tri.x], walkmesh->vertices[tri.y], glm::u8vec4(0x88, 0x00, 0xff, 0xff));
-			lines.draw(walkmesh->vertices[tri.y], walkmesh->vertices[tri.z], glm::u8vec4(0x88, 0x00, 0xff, 0xff));
-			lines.draw(walkmesh->vertices[tri.z], walkmesh->vertices[tri.x], glm::u8vec4(0x88, 0x00, 0xff, 0xff));
-		}
-	}
-	*/
-
 	{ //use DrawLines to overlay some text:
 		glDisable(GL_DEPTH_TEST);
 		float aspect = float(drawable_size.x) / float(drawable_size.y);
@@ -357,23 +540,43 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 		));
 
 		constexpr float H = 0.09f;
-		lines.draw_text("Mouse motion looks; WASD moves; escape ungrabs mouse",
+		lines.draw_text("Up/down to navigate; enter to select; LMB to shoot",
 			glm::vec3(-aspect + 0.1f * H, -1.0 + 0.1f * H, 0.0),
 			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 			glm::u8vec4(0x00, 0x00, 0x00, 0x00));
 		float ofs = 2.0f / drawable_size.y;
-		lines.draw_text("Mouse motion looks; WASD moves; escape ungrabs mouse",
+		lines.draw_text("Up/down to navigate; enter to select; LMB to shoot",
 			glm::vec3(-aspect + 0.1f * H + ofs, -1.0 + + 0.1f * H + ofs, 0.0),
 			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 			glm::u8vec4(0xff, 0xff, 0xff, 0x00));
 
-		for (uint32_t a = 0; a < circle.size(); ++a) {
+		if (gameState == MENU) {
+			for (int i = hovering_text - 2; i < hovering_text + 3; i++) {
+				if (i < 0 || i >= (int)song_list.size()) continue;
+				// todo : these offsets need to be fixed...
+				lines.draw_text(song_list[i].first, 
+					glm::vec3(-aspect + 0.5f + ofs, -1.0 + + (float(hovering_text + 3) - float(i)) * float(drawable_size.y) / 20.0f * 0.1f * H + ofs, 0.0),
+					glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+					glm::u8vec4(0xff, 0xff, 0xff, 0x00));
+			}
+		} else if (gameState == PLAYING) {
+			for (uint32_t a = 0; a < circle.size(); ++a) {
 				lines.draw(
 					glm::vec3(camera->transform->position.x + 0.02f * circle[a], 0.0f),
 					glm::vec3(camera->transform->position.y + 0.02f * circle[(a+1)%circle.size()], 0.0f),
 					glm::u8vec4(0xff, 0xff, 0xff, 0x00)
 				);
 			}
+		} else if (gameState == PAUSED) {
+			for (int i = hovering_text - 2; i < hovering_text + 3; i++) {
+				if (i < 0 || i >= (int)option_texts.size()) continue;
+				// todo : these offsets need to be fixed...
+				lines.draw_text(option_texts[i], 
+					glm::vec3(-aspect + 0.5f + ofs, -1.0 + + (float(hovering_text + 3) - float(i)) * float(drawable_size.y) / 20.0f * 0.1f * H + ofs, 0.0),
+					glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+					glm::u8vec4(0xff, 0xff, 0xff, 0x00));
+			}
+		}
 	}
 	GL_ERRORS();
 }
