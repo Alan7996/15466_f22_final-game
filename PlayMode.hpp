@@ -2,6 +2,7 @@
 
 #include "Scene.hpp"
 #include "WalkMesh.hpp"
+#include "Sound.hpp"
 
 #include <glm/glm.hpp>
 
@@ -46,7 +47,7 @@ struct PlayMode : Mode {
 	// format: [space separated] single/burst/hold, up/down/left/right, coord(s), @, hit time(s)
 	// if up/down, -y_scale <= coord <= y_scale
 	// if left/right, -x_scale <= coord <= x_scale
-	virtual void read_notes();
+	virtual void read_notes(std::string song_name);
 	virtual std::pair<float, float> get_coords(std::string dir, float coord);
 
 	// update note visibility and position
@@ -55,7 +56,22 @@ struct PlayMode : Mode {
 	// cast a ray to detect collision with a mesh
 	virtual hitInfo trace_ray(glm::vec3 pos, glm::vec3 dir);
 
+	// read the .wav file
+	void read_song();
+
+	// game state related
+	void to_menu();
+	void start_song(int idx);
+	void restart_song();
+	void pause_song();
+	void unpause_song();
+
 	//----- game state -----
+	enum GameState {
+		PLAYING,
+		PAUSED,
+		MENU,
+	} gameState;
 
 	// input tracking:
 	struct Button {
@@ -69,6 +85,7 @@ struct PlayMode : Mode {
 	Scene::Camera *camera = nullptr;
 
 	// assets
+	// TODO : edit so that gun and border_drawable's are not drawn in menu
 	Drawable note_drawable;
 	std::vector<NoteInfo> notes;
 
@@ -80,9 +97,25 @@ struct PlayMode : Mode {
 	float x_scale = 1.0f;
 	float y_scale = 1.0f;
 
+	std::vector< std::pair<std::string, Sound::Sample> > song_list;
+
 	// music
 	bool has_started = false;
 	std::chrono::time_point<std::chrono::high_resolution_clock> music_start_time;
+	std::chrono::time_point<std::chrono::high_resolution_clock> music_pause_time;
+	std::shared_ptr< Sound::PlayingSample > active_song;
+
+	// gameplay
+	int note_start_idx = 0;
+	int note_end_idx = 0;
+	int score = 0;
+	float health = 0.0f;
+
+	// UI
+	uint8_t MAX_TEXT_SIZE = 7;
+	std::vector<std::string> option_texts {"RESUME", "RESTART", "EXIT"};
+	uint8_t hovering_text = 0;
+	int chosen_song = 0;
 
 	// settings
 	float init_note_depth = -20.0f;
@@ -100,4 +133,11 @@ struct PlayMode : Mode {
 		bool flip_x = false; //flip x inputs when moving? (used to handle situations where camera is upside-down)
 	} cam;
 
+	void reset_cam() { 
+		cam.radius = 2.0f;
+		cam.azimuth = 0.0f;
+		cam.elevation = 3.1415926f / 2.0f;
+		cam.target = glm::vec3(0.0f);
+		cam.flip_x = false;
+	}
 };

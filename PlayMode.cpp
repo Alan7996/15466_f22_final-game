@@ -42,6 +42,11 @@ Load< Scene > main_scene(LoadTagDefault, []() -> Scene const * {
 	});
 });
 
+// would like to generalize this load_song function to take in string input and load string.wav file
+Load< Sound::Sample > load_song_tutorial(LoadTagDefault, []() -> Sound::Sample const * {
+	return new Sound::Sample(data_path("Tutorial.wav"));
+});
+
 PlayMode::PlayMode() : scene(*main_scene) {
 	// camera and assets
 	SDL_SetRelativeMouseMode(SDL_TRUE);
@@ -89,7 +94,17 @@ PlayMode::PlayMode() : scene(*main_scene) {
 		d2.pipeline.start = border_drawable.start;
 		d2.pipeline.count = border_drawable.count;
 
-		read_notes();
+		// would be nice to count the number of songs / know their names by reading through the file system
+		// all tutorial songs for testing purposes for now
+		song_list.emplace_back(std::make_pair("Tutorial", *load_song_tutorial));
+		song_list.emplace_back(std::make_pair("Tutorial2", *load_song_tutorial));
+		song_list.emplace_back(std::make_pair("Tutorial3", *load_song_tutorial));
+		song_list.emplace_back(std::make_pair("Tutorial4", *load_song_tutorial));
+		song_list.emplace_back(std::make_pair("Tutorial5", *load_song_tutorial));
+		song_list.emplace_back(std::make_pair("Tutorial6", *load_song_tutorial));
+		song_list.emplace_back(std::make_pair("Tutorial7", *load_song_tutorial));
+
+		to_menu();
 	}
 }
 
@@ -135,11 +150,11 @@ std::pair<float, float> PlayMode::get_coords(std::string dir, float coord) {
 	return std::make_pair(x, y);
 }
 
-void PlayMode::read_notes() {
+void PlayMode::read_notes(std::string song_name) {
 	// https://www.tutorialspoint.com/read-file-line-by-line-using-cplusplus
 	std::fstream file;
 	const char* delim = " ";
-	file.open(data_path("notes_single.txt"), std::ios::in);
+	file.open(data_path(song_name + ".txt"), std::ios::in);
 	if (file.is_open()){
 		std::string line;
 		while(getline(file, line)){
@@ -208,9 +223,8 @@ void PlayMode::read_notes() {
 
 
 void PlayMode::update_notes() {
-	if (!has_started) {
-		return;
-	}
+	if (gameState != PLAYING) return;
+
 	auto current_time = std::chrono::high_resolution_clock::now();
 	float music_time = std::chrono::duration<float>(current_time - music_start_time).count();
 	std::vector<uint64_t> indices;
@@ -270,19 +284,114 @@ hitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 	return hits;
 }
 
+// unpause_song should be called either when the game is launched when going from PLAYING -> PAUSED -> select EXIT
+void PlayMode::to_menu() {
+	// reset all state variables
+	has_started = false;
+	gameState = MENU;
+	hovering_text = (uint8_t)chosen_song;
+
+	reset_cam();
+
+	// stop currently playing song
+	if (active_song) active_song->stop();
+}
+
+void PlayMode::start_song(int idx) {
+	if (has_started) return;
+
+	reset_cam();
+	SDL_SetRelativeMouseMode(SDL_TRUE);
+
+	has_started = true;
+	gameState = PLAYING;
+	chosen_song = idx;
+
+	music_start_time = std::chrono::high_resolution_clock::now(); // might want to reconsider if we want buffer time between starting the song and loading the level
+
+	// choose the song based on index
+	read_notes(song_list[idx].first);
+	active_song = Sound::play(song_list[idx].second);
+}
+
+// restart_song should only be called when going from PLAYING -> PAUSED -> select RESTART
+void PlayMode::restart_song() {
+	// clear loaded assets
+	active_song->stop();
+	for (int i = 0; i < notes.size(); i++) {
+		auto note = notes[i];
+		for (uint64_t j = 0; j < note.note_transforms.size(); j++) {
+			note.note_transforms[j]->scale = glm::vec3(0.0f, 0.0f, 0.0f);
+		}
+	}
+
+	has_started = false;
+	start_song(chosen_song);
+}
+
+void PlayMode::pause_song() {
+	// TODO : need to actually figure out how to pause song
+	gameState = PAUSED;
+	hovering_text = 0;
+	music_pause_time = std::chrono::high_resolution_clock::now();
+}
+
+// unpause_song should only be called when going from PLAYING -> PAUSED -> select RESUME
+void PlayMode::unpause_song() {
+	gameState = PLAYING;
+
+	auto current_time = std::chrono::high_resolution_clock::now();
+	music_start_time += current_time - music_pause_time;
+}
+
 bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
 
 	if (evt.type == SDL_KEYDOWN) {
-		if (evt.key.keysym.sym == SDLK_RETURN) {
-			// start game
-			if (!has_started) {
-				has_started = true;
-				music_start_time = std::chrono::high_resolution_clock::now();
+		if (gameState == MENU) {
+			if (evt.key.keysym.sym == SDLK_RETURN) {
+				start_song(hovering_text);
+				return true;
+			} else if (evt.key.keysym.sym == SDLK_UP) {
+				hovering_text = hovering_text == 0 ? 0 : hovering_text - 1;
+				return true;
+			} else if (evt.key.keysym.sym == SDLK_DOWN) {
+				hovering_text = hovering_text == static_cast<uint8_t>(song_list.size()) - 1? static_cast<uint8_t>(song_list.size()) - 1: hovering_text + 1;
+				return true;
+			} else if (evt.key.keysym.sym == SDLK_ESCAPE) {
+				// press Exit key to close application, might want to change in future
+				exit(0);
+				return true;
 			}
-			return true;
+		} else if (gameState == PLAYING) {
+			if (evt.key.keysym.sym == SDLK_ESCAPE) {
+				SDL_SetRelativeMouseMode(SDL_FALSE);
+				pause_song();
+				return true;
+			}
+		} else if (gameState == PAUSED) {
+			if (evt.key.keysym.sym == SDLK_RETURN) {
+				if (hovering_text == 0) {unpause_song(); return true;}
+				else if (hovering_text == 1) {restart_song(); return true;}
+				else if (hovering_text == 2) {to_menu(); return true;}
+			}
+			else if (evt.key.keysym.sym == SDLK_UP) {
+				hovering_text = hovering_text == 0 ? 0 : hovering_text - 1;
+				return true;
+			} else if (evt.key.keysym.sym == SDLK_DOWN) {
+				hovering_text = hovering_text == static_cast<uint8_t>(option_texts.size()) - 1? static_cast<uint8_t>(option_texts.size()) - 1: hovering_text + 1;
+				return true;
+			}if (evt.key.keysym.sym == SDLK_ESCAPE) {
+				SDL_SetRelativeMouseMode(SDL_FALSE);
+				unpause_song();
+				return true;
+			}
 		}
+
 	}
 	else if (evt.type == SDL_MOUSEBUTTONDOWN) {
+		SDL_SetRelativeMouseMode(SDL_TRUE);
+		if (gameState != PLAYING) return true;
+
 		// ray from camera position to origin (p1 - p2)
 		glm::vec3 ray = glm::vec3(0) - camera->transform->position;
 		// rotate ray to get the direction from camera
@@ -309,21 +418,23 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 			std::cout << "miss\n";
 		}
 	} else if (evt.type == SDL_MOUSEMOTION) {
-			glm::vec2 delta;
-			delta.x = evt.motion.xrel / float(window_size.x) * 2.0f;
-			delta.x *= float(window_size.y) / float(window_size.x);
-			delta.y = evt.motion.yrel / float(window_size.y) * -2.0f;
+		if (gameState != PLAYING) return true;
+		
+		glm::vec2 delta;
+		delta.x = evt.motion.xrel / float(window_size.x) * 2.0f;
+		delta.x *= float(window_size.y) / float(window_size.x);
+		delta.y = evt.motion.yrel / float(window_size.y) * -2.0f;
 
-			cam.azimuth -= 0.3f * delta.x;
-			cam.elevation -= 0.3f * delta.y;
+		cam.azimuth -= 0.3f * delta.x;
+		cam.elevation -= 0.3f * delta.y;
 
-			cam.azimuth /= 2.0f * 3.1415926f;
-			cam.azimuth -= std::round(cam.azimuth);
-			cam.azimuth *= 2.0f * 3.1415926f;
+		cam.azimuth /= 2.0f * 3.1415926f;
+		cam.azimuth -= std::round(cam.azimuth);
+		cam.azimuth *= 2.0f * 3.1415926f;
 
-			cam.elevation /= 2.0f * 3.1415926f;
-			cam.elevation -= std::round(cam.elevation);
-			cam.elevation *= 2.0f * 3.1415926f;
+		cam.elevation /= 2.0f * 3.1415926f;
+		cam.elevation -= std::round(cam.elevation);
+		cam.elevation *= 2.0f * 3.1415926f;
 
 		return true;
 	}
@@ -331,13 +442,15 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 }
 
 void PlayMode::update(float elapsed) {
+	if (gameState == PLAYING) {
+		update_notes();
+	}
+
 	//reset button press counters:
 	left.downs = 0;
 	right.downs = 0;
 	up.downs = 0;
 	down.downs = 0;
-
-	update_notes();
 }
 
 void PlayMode::draw(glm::uvec2 const &drawable_size) {
@@ -386,23 +499,43 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 		));
 
 		constexpr float H = 0.09f;
-		lines.draw_text("Mouse motion looks; WASD moves; escape ungrabs mouse",
+		lines.draw_text("Mouse motion looks; LMB to shoot; enter to select; escape ungrabs mouse",
 			glm::vec3(-aspect + 0.1f * H, -1.0 + 0.1f * H, 0.0),
 			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 			glm::u8vec4(0x00, 0x00, 0x00, 0x00));
 		float ofs = 2.0f / drawable_size.y;
-		lines.draw_text("Mouse motion looks; WASD moves; escape ungrabs mouse",
+		lines.draw_text("Mouse motion looks; LMB to shoot; enter to select; escape ungrabs mouse",
 			glm::vec3(-aspect + 0.1f * H + ofs, -1.0 + + 0.1f * H + ofs, 0.0),
 			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 			glm::u8vec4(0xff, 0xff, 0xff, 0x00));
 
-		for (uint32_t a = 0; a < circle.size(); ++a) {
+		if (gameState == MENU) {
+			for (int i = hovering_text - 2; i < hovering_text + 3; i++) {
+				if (i < 0 || i >= song_list.size()) continue;
+				// todo : these offsets need to be fixed...
+				lines.draw_text(song_list[i].first, 
+					glm::vec3(-aspect + 0.5f + ofs, -1.0 + + (float(hovering_text + 3) - float(i)) * float(drawable_size.y) / 20.0f * 0.1f * H + ofs, 0.0),
+					glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+					glm::u8vec4(0xff, 0xff, 0xff, 0x00));
+			}
+		} else if (gameState == PLAYING) {
+			for (uint32_t a = 0; a < circle.size(); ++a) {
 				lines.draw(
 					glm::vec3(camera->transform->position.x + 0.02f * circle[a], 0.0f),
 					glm::vec3(camera->transform->position.y + 0.02f * circle[(a+1)%circle.size()], 0.0f),
 					glm::u8vec4(0xff, 0xff, 0xff, 0x00)
 				);
 			}
+		} else if (gameState == PAUSED) {
+			for (int i = hovering_text - 2; i < hovering_text + 3; i++) {
+				if (i < 0 || i >= option_texts.size()) continue;
+				// todo : these offsets need to be fixed...
+				lines.draw_text(option_texts[i], 
+					glm::vec3(-aspect + 0.5f + ofs, -1.0 + + (float(hovering_text + 3) - float(i)) * float(drawable_size.y) / 20.0f * 0.1f * H + ofs, 0.0),
+					glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+					glm::u8vec4(0xff, 0xff, 0xff, 0x00));
+			}
+		}
 	}
 	GL_ERRORS();
 }
