@@ -245,11 +245,6 @@ void PlayMode::update_notes() {
 		if (i >= notes.size()) continue;
 		auto &note = notes[i];
 		for (int j = 0; j < note.note_transforms.size(); j++) {
-			// move the note
-			float delta_time = music_time - (note.hit_times[j] - note_approach_time);
-			float note_speed = (border_depth - init_note_depth) / note_approach_time;
-			note.note_transforms[j]->position.z = init_note_depth + note_speed * delta_time;
-
 			if (note.isActive) {
 				if (music_time > note.hit_times[j] + valid_hit_time_delta) {
 					// 'delete' the note
@@ -257,15 +252,24 @@ void PlayMode::update_notes() {
 					note_start_idx += 1;
 				}
 			} else {
-				if (!note.beenHit && music_time >= note.hit_times[j] - note_approach_time) {
-					// spawn the note
-					note.isActive = true;
-					note.note_transforms[j]->scale = glm::vec3(0.1f, 0.1f, 0.1f);
-					note_end_idx += 1;
+				if (!note.beenHit) {
+					if (music_time >= note.hit_times[j] - note_approach_time) {
+						// spawn the note
+						note.isActive = true;
+						note.note_transforms[j]->scale = glm::vec3(0.1f, 0.1f, 0.1f);
+						note_end_idx += 1;
 
-					if (note_end_idx == notes.size()) game_over(true);
+						if (note_end_idx == notes.size()) game_over(true);
+					} else {
+						continue;
+					}
 				}
 			}
+
+			// move the note
+			float delta_time = music_time - (note.hit_times[j] - note_approach_time);
+			float note_speed = (border_depth - init_note_depth) / note_approach_time;
+			note.note_transforms[j]->position.z = init_note_depth + note_speed * delta_time;
 		}
 	}
 }
@@ -274,7 +278,7 @@ void PlayMode::hit_note(NoteInfo* note) {
 	// deactivate the note
 	note->beenHit = true;
 	note->isActive = false;
-	
+
 	// TODO : fix this for hold
 	note->note_transforms[0]->scale = glm::vec3(0.0f, 0.0f, 0.0f);
 

@@ -124,6 +124,7 @@ struct PlayMode : Mode {
 	int chosen_song = 0;
 
 	// settings
+	// TODO : should include some scaling variable to allow for different note speed settings to automatically affect these
 	float init_note_depth = -20.0f;
 	float border_depth = -0.0f;
 	float note_approach_time = 4.0f; // time between when the note shows up and hit time
