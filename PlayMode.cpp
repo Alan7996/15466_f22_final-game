@@ -203,7 +203,7 @@ void PlayMode::read_notes(std::string song_name) {
 
 			notes.push_back(note);
 
-			for (int i = 0; i < note.note_transforms.size(); i++) {
+			for (int i = 0; i < (int)note.note_transforms.size(); i++) {
 				scene.drawables.emplace_back(note.note_transforms[i]);
 				Scene::Drawable &d = scene.drawables.back();
 				d.pipeline = lit_color_texture_program_pipeline;
@@ -238,9 +238,9 @@ void PlayMode::update_notes() {
 	float music_time = std::chrono::duration<float>(current_time - music_start_time).count();
 	
 	for (int i = note_start_idx; i < note_end_idx + 1; i++) {
-		if (i >= notes.size()) continue;
+		if (i >= (int)notes.size()) continue;
 		auto &note = notes[i];
-		for (int j = 0; j < note.note_transforms.size(); j++) {
+		for (int j = 0; j < (int)note.note_transforms.size(); j++) {
 			if (note.isActive) {
 				if (music_time > note.hit_times[j] + valid_hit_time_delta) {
 					// 'delete' the note
@@ -255,7 +255,7 @@ void PlayMode::update_notes() {
 						note.note_transforms[j]->scale = glm::vec3(0.1f, 0.1f, 0.1f);
 						note_end_idx += 1;
 
-						if (note_end_idx == notes.size()) game_over(true);
+						if (note_end_idx == (int)notes.size()) game_over(true);
 					} else {
 						continue;
 					}
@@ -552,7 +552,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 
 		if (gameState == MENU) {
 			for (int i = hovering_text - 2; i < hovering_text + 3; i++) {
-				if (i < 0 || i >= song_list.size()) continue;
+				if (i < 0 || i >= (int)song_list.size()) continue;
 				// todo : these offsets need to be fixed...
 				lines.draw_text(song_list[i].first, 
 					glm::vec3(-aspect + 0.5f + ofs, -1.0 + + (float(hovering_text + 3) - float(i)) * float(drawable_size.y) / 20.0f * 0.1f * H + ofs, 0.0),
@@ -569,7 +569,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 			}
 		} else if (gameState == PAUSED) {
 			for (int i = hovering_text - 2; i < hovering_text + 3; i++) {
-				if (i < 0 || i >= option_texts.size()) continue;
+				if (i < 0 || i >= (int)option_texts.size()) continue;
 				// todo : these offsets need to be fixed...
 				lines.draw_text(option_texts[i], 
 					glm::vec3(-aspect + 0.5f + ofs, -1.0 + + (float(hovering_text + 3) - float(i)) * float(drawable_size.y) / 20.0f * 0.1f * H + ofs, 0.0),
