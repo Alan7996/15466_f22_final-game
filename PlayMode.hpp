@@ -137,7 +137,8 @@ struct PlayMode : Mode {
 	float init_note_depth = -20.0f;
 	float border_depth = -0.0f;
 	float note_approach_time = 4.0f; // time between when the note shows up and hit time
-	float valid_hit_time_delta = 0.2f;
+	float valid_hit_time_delta = 0.3f;
+	float real_song_offset = 0.075f;
 
 
 	// from ShowSceneMode.hpp to fix the up axis
