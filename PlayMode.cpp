@@ -72,17 +72,20 @@ PlayMode::PlayMode() : scene(*main_scene) {
 	scene.drawables.clear();
 
 	{ // initialize game state
-		// gun_transform = new Scene::Transform;
-		// gun_transform->name = "Gun";
-		// gun_transform->position = glm::vec3(0.0f, 0.0f, 0.0f);
-		// gun_transform->scale = glm::vec3(1.0f, 1.0f, 1.0f);
-		// scene.drawables.emplace_back(gun_transform);
-		// Scene::Drawable &d1 = scene.drawables.back();
-		// d1.pipeline = lit_color_texture_program_pipeline;
-		// d1.pipeline.vao = main_meshes_for_lit_color_texture_program;
-		// d1.pipeline.type = gun_drawable.type;
-		// d1.pipeline.start = gun_drawable.start;
-		// d1.pipeline.count = gun_drawable.count;
+		gun_transform = new Scene::Transform;
+		gun_transform->name = "Gun";
+		gun_transform->parent = camera->transform;
+		// TODO: these numbers need tweaking once we finalize the gun model
+		gun_transform->position = glm::vec3(0.03f, -0.06f, -0.4f);
+		gun_transform->scale = glm::vec3(0.01f, 0.01f, 0.1f);
+		gun_transform->rotation = glm::quat(0.0f, 0.0f, 1.0f, 0.0f);
+		scene.drawables.emplace_back(gun_transform);
+		Scene::Drawable &d1 = scene.drawables.back();
+		d1.pipeline = lit_color_texture_program_pipeline;
+		d1.pipeline.vao = main_meshes_for_lit_color_texture_program;
+		d1.pipeline.type = gun_drawable.type;
+		d1.pipeline.start = gun_drawable.start;
+		d1.pipeline.count = gun_drawable.count;
 
 		border_transform = new Scene::Transform;
 		border_transform->name = "Border";
