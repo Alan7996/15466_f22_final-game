@@ -26,7 +26,10 @@ struct NoteInfo {
 	std::vector<Scene::Transform *> note_transforms;
 	std::vector<float> hit_times;
 	NoteType noteType = NoteType::SINGLE;
-	bool beenHit;
+	// We need both beenHit and isActive because otherwise notes that has been
+	// hit will keep re-activating
+	bool beenHit = false;
+	bool isActive = false;
 };
 
 struct hitInfo {
@@ -52,9 +55,11 @@ struct PlayMode : Mode {
 
 	// update note visibility and position
 	virtual void update_notes();
+	void hit_note(NoteInfo* note);
 
 	// cast a ray to detect collision with a mesh
 	virtual hitInfo trace_ray(glm::vec3 pos, glm::vec3 dir);
+	void check_hit();
 
 	// read the .wav file
 	void read_song();
@@ -65,6 +70,7 @@ struct PlayMode : Mode {
 	void restart_song();
 	void pause_song();
 	void unpause_song();
+	void game_over(bool didClear);
 
 	//----- game state -----
 	enum GameState {

@@ -222,37 +222,64 @@ void PlayMode::read_notes(std::string song_name) {
 }
 
 
+/* We maintain the list of notes to be checked in the following way : 
+ * We keep track of two types of variables. First are note_start_idx and 
+ * note_end_idx, which records the range of notes that have spawned but have
+ * yet to reach the disappearing line. Second are each note's isActive boolean,
+ * which if a note was correctly hit by the player should toggle to false and
+ * make the note have 0 scale. We however do not immediately update the indices,
+ * meaning the note will continue to move towards the player until it reaches the
+ * disappearing line. This is so that we can keep a nice loop from start to end
+ * indices without worrying about tight time gaps between notes. 
+ * 
+ * Also note that we always loop up to ONE INDEX HIGHER than the end index, to
+ * check if we should start the next note or not.
+*/
 void PlayMode::update_notes() {
 	if (gameState != PLAYING) return;
 
 	auto current_time = std::chrono::high_resolution_clock::now();
 	float music_time = std::chrono::duration<float>(current_time - music_start_time).count();
-	std::vector<uint64_t> indices;
-	for (uint64_t j = 0; j < notes.size(); j++) {
-		auto &note = notes[j];
-		for (uint64_t i = 0; i < note.note_transforms.size(); i++) {
-			if (music_time < note.hit_times[i] - note_approach_time) {
-				continue; // not yet time to show this note
-			} else if (music_time > note.hit_times[i] + valid_hit_time_delta) {
-				note.note_transforms[i]->scale = glm::vec3(0.0f, 0.0f, 0.0f); // note already gone
-				// TODO: animation
-				indices.push_back(j);
-			} else if (note.beenHit){
-				note.note_transforms[i]->scale = glm::vec3(0.0f, 0.0f, 0.0f); // note been hit
-				indices.push_back(j);
+	
+	for (int i = note_start_idx; i < note_end_idx + 1; i++) {
+		if (i >= notes.size()) continue;
+		auto &note = notes[i];
+		for (int j = 0; j < note.note_transforms.size(); j++) {
+			// move the note
+			float delta_time = music_time - (note.hit_times[j] - note_approach_time);
+			float note_speed = (border_depth - init_note_depth) / note_approach_time;
+			note.note_transforms[j]->position.z = init_note_depth + note_speed * delta_time;
+
+			if (note.isActive) {
+				if (music_time > note.hit_times[j] + valid_hit_time_delta) {
+					// 'delete' the note
+					note.note_transforms[j]->scale = glm::vec3(0.0f, 0.0f, 0.0f);
+					note_start_idx += 1;
+				}
 			} else {
-				// move note toward player
-				note.note_transforms[i]->scale = glm::vec3(0.1f, 0.1f, 0.1f);
-				float delta_time = music_time - (note.hit_times[i] - note_approach_time);
-				float note_speed = (border_depth - init_note_depth) / note_approach_time;
-				note.note_transforms[i]->position.z = init_note_depth + note_speed * delta_time;
-			}	
+				if (!note.beenHit && music_time >= note.hit_times[j] - note_approach_time) {
+					// spawn the note
+					note.isActive = true;
+					note.note_transforms[j]->scale = glm::vec3(0.1f, 0.1f, 0.1f);
+					note_end_idx += 1;
+
+					if (note_end_idx == notes.size()) game_over(true);
+				}
+			}
 		}
 	}
-	// removes notes that are not valid anymore
-	for(uint64_t i = 0; i < indices.size(); i++) {
-		notes.erase(notes.begin() + indices[i]);
-	}
+}
+
+void PlayMode::hit_note(NoteInfo* note) {
+	// deactivate the note
+	note->beenHit = true;
+	note->isActive = false;
+	
+	// TODO : fix this for hold
+	note->note_transforms[0]->scale = glm::vec3(0.0f, 0.0f, 0.0f);
+
+	// increment score & health
+
 }
 
 // hackish code that only works for a sphere, need to come up with another way to detect collision as we don't have mesh info in a nice format
@@ -284,7 +311,35 @@ hitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 	return hits;
 }
 
-// unpause_song should be called either when the game is launched when going from PLAYING -> PAUSED -> select EXIT
+void PlayMode::check_hit() {
+	// ray from camera position to origin (p1 - p2)
+	glm::vec3 ray = glm::vec3(0) - camera->transform->position;
+	// rotate ray to get the direction from camera
+	ray = glm::rotate(camera->transform->rotation, ray);
+	// trace the ray to see if we hit a note
+	hitInfo hits = trace_ray(camera->transform->position, ray);
+
+	auto current_time = std::chrono::high_resolution_clock::now();
+	float music_time = std::chrono::duration<float>(current_time - music_start_time).count();
+	// if we hit a note, check to see if we hit a good time
+	if(hits.hit) {
+		std::cout << music_time << " bye" << "\n";
+		std::cout << hits.note->hit_times[0] << "\n";
+		// valid hit time
+		if(fabs(music_time - hits.note->hit_times[0]) < valid_hit_time_delta) {
+			std::cout << "valid hit\n";
+			hit_note(hits.note);
+		}
+		else {
+			std::cout << "bad hit\n";
+		}
+	}
+	else {
+		std::cout << "miss\n";
+	}
+}
+
+// to_menu should be called either when the game is launched or when going from PLAYING -> PAUSED -> select EXIT
 void PlayMode::to_menu() {
 	// reset all state variables
 	has_started = false;
@@ -297,6 +352,7 @@ void PlayMode::to_menu() {
 	if (active_song) active_song->stop();
 }
 
+// start_song should only be called when going from MENU -> PLAYING or in restart_song
 void PlayMode::start_song(int idx) {
 	if (has_started) return;
 
@@ -329,6 +385,7 @@ void PlayMode::restart_song() {
 	start_song(chosen_song);
 }
 
+// pause_song should only be called when going from PLAYING -> PAUSED
 void PlayMode::pause_song() {
 	// TODO : need to actually figure out how to pause song
 	gameState = PAUSED;
@@ -342,6 +399,14 @@ void PlayMode::unpause_song() {
 
 	auto current_time = std::chrono::high_resolution_clock::now();
 	music_start_time += current_time - music_pause_time;
+}
+
+void PlayMode::game_over(bool didClear) {
+	if (didClear) {
+		std::cout << "song cleared!\n";
+	} else {
+		std::cout << "song failed!\n";
+	}
 }
 
 bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
@@ -363,7 +428,10 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 				return true;
 			}
 		} else if (gameState == PLAYING) {
-			if (evt.key.keysym.sym == SDLK_ESCAPE) {
+			if (evt.key.keysym.sym == SDLK_z || evt.key.keysym.sym == SDLK_x) {
+				check_hit();
+				return true;
+			} else if (evt.key.keysym.sym == SDLK_ESCAPE) {
 				SDL_SetRelativeMouseMode(SDL_FALSE);
 				pause_song();
 				return true;
@@ -392,31 +460,7 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 		SDL_SetRelativeMouseMode(SDL_TRUE);
 		if (gameState != PLAYING) return true;
 
-		// ray from camera position to origin (p1 - p2)
-		glm::vec3 ray = glm::vec3(0) - camera->transform->position;
-		// rotate ray to get the direction from camera
-		ray = glm::rotate(camera->transform->rotation, ray);
-		// trace the ray to see if we hit a note
-		hitInfo hits = trace_ray(camera->transform->position, ray);
-
-		auto current_time = std::chrono::high_resolution_clock::now();
-		float music_time = std::chrono::duration<float>(current_time - music_start_time).count();
-		// if we hit a note, check to see if we hit a good time
-		if(hits.hit) {
-			std::cout << music_time << " bye" << "\n";
-			std::cout << hits.note->hit_times[0] << "\n";
-			// valid hit time
-			if(fabs(music_time - hits.note->hit_times[0]) < valid_hit_time_delta) {
-				std::cout << "valid hit\n";
-				hits.note->beenHit = true;
-			}
-			else {
-				std::cout << "bad hit\n";
-			}
-		}
-		else {
-			std::cout << "miss\n";
-		}
+		check_hit();		
 	} else if (evt.type == SDL_MOUSEMOTION) {
 		if (gameState != PLAYING) return true;
 		
@@ -499,12 +543,12 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 		));
 
 		constexpr float H = 0.09f;
-		lines.draw_text("Mouse motion looks; LMB to shoot; enter to select; escape ungrabs mouse",
+		lines.draw_text("Up/down to navigate; enter to select; LMB to shoot",
 			glm::vec3(-aspect + 0.1f * H, -1.0 + 0.1f * H, 0.0),
 			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 			glm::u8vec4(0x00, 0x00, 0x00, 0x00));
 		float ofs = 2.0f / drawable_size.y;
-		lines.draw_text("Mouse motion looks; LMB to shoot; enter to select; escape ungrabs mouse",
+		lines.draw_text("Up/down to navigate; enter to select; LMB to shoot",
 			glm::vec3(-aspect + 0.1f * H + ofs, -1.0 + + 0.1f * H + ofs, 0.0),
 			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 			glm::u8vec4(0xff, 0xff, 0xff, 0x00));
