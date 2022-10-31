@@ -83,7 +83,7 @@ struct PlayMode : Mode {
 	struct Button {
 		uint8_t downs = 0;
 		uint8_t pressed = 0;
-	} left, right, down, up; // thought : don't we only need one Button?
+	} hold;
 
 	// local copy of the game scene
 	Scene scene;
@@ -118,7 +118,6 @@ struct PlayMode : Mode {
 	float health = 0.0f;
 
 	// UI
-	uint8_t MAX_TEXT_SIZE = 7;
 	std::vector<std::string> option_texts {"RESUME", "RESTART", "EXIT"};
 	uint8_t hovering_text = 0;
 	int chosen_song = 0;

@@ -374,7 +374,7 @@ void PlayMode::start_song(int idx) {
 
 // restart_song should only be called when going from PLAYING -> PAUSED -> select RESTART
 void PlayMode::restart_song() {
-	// clear loaded assets
+	// reset loaded assets
 	active_song->stop();
 	for (auto &note: notes) {
 		note.beenHit = false;
@@ -399,8 +399,8 @@ void PlayMode::pause_song() {
 
 // unpause_song should only be called when going from PLAYING -> PAUSED -> select RESUME
 void PlayMode::unpause_song() {
+	// TODO : need to actually figure out how to unpause song
 	gameState = PLAYING;
-
 	auto current_time = std::chrono::high_resolution_clock::now();
 	music_start_time += current_time - music_pause_time;
 }
@@ -458,7 +458,6 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 				return true;
 			}
 		}
-
 	}
 	else if (evt.type == SDL_MOUSEBUTTONDOWN) {
 		SDL_SetRelativeMouseMode(SDL_TRUE);
@@ -493,12 +492,6 @@ void PlayMode::update(float elapsed) {
 	if (gameState == PLAYING) {
 		update_notes();
 	}
-
-	//reset button press counters:
-	left.downs = 0;
-	right.downs = 0;
-	up.downs = 0;
-	down.downs = 0;
 }
 
 void PlayMode::draw(glm::uvec2 const &drawable_size) {
