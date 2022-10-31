@@ -32,8 +32,8 @@ struct NoteInfo {
 	bool isActive = false;
 };
 
-struct hitInfo {
-	bool hit;
+struct HitInfo {
+	// might need smthing like isHitting for hold
 	struct NoteInfo *note;
 };
 
@@ -58,7 +58,7 @@ struct PlayMode : Mode {
 	void hit_note(NoteInfo* note);
 
 	// cast a ray to detect collision with a mesh
-	virtual hitInfo trace_ray(glm::vec3 pos, glm::vec3 dir);
+	virtual HitInfo trace_ray(glm::vec3 pos, glm::vec3 dir);
 	void check_hit();
 
 	// read the .wav file

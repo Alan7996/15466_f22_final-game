@@ -48,10 +48,12 @@ Load< Sound::Sample > load_song_tutorial(LoadTagDefault, []() -> Sound::Sample c
 });
 
 PlayMode::PlayMode() : scene(*main_scene) {
-	// camera and assets
 	SDL_SetRelativeMouseMode(SDL_TRUE);
+
+	// camera and assets
 	if (scene.cameras.size() != 1) throw std::runtime_error("Expecting scene to have exactly one camera, but it has " + std::to_string(scene.cameras.size()));
 	camera = &scene.cameras.front();
+
 	for (auto &d : scene.drawables) {
 		if (d.transform->name == "Note") {
 			note_drawable.type = d.pipeline.type;
@@ -160,14 +162,17 @@ void PlayMode::read_notes(std::string song_name) {
 		while(getline(file, line)){
 			std::vector<std::string> note_info;
 			tokenize(line, delim, note_info);
+
 			std::string note_type = note_info[0];
 			std::string dir = note_info[1];
 			int idx = (int) (find(note_info.begin(), note_info.end(), "@") - note_info.begin());
+
+			NoteInfo note;
+
 			if (note_type == "hold") {
-				NoteInfo note;
 				note.noteType = NoteType::HOLD;
-				note.beenHit = false;
-				for (int i = 0; i < idx - 2; i++) {
+
+				for (int i = 0; i < idx - 2; i++) { // question : why is this -2 and not -1?
 					float coord = std::stof(note_info[2+i]);
 					float time = std::stof(note_info[idx+1+i]);
 					std::pair<float, float> coords = get_coords(dir, coord);
@@ -176,39 +181,30 @@ void PlayMode::read_notes(std::string song_name) {
 					transform->name = "Note";
 					transform->position = glm::vec3(coords.first, coords.second, init_note_depth);
 					transform->scale = glm::vec3(0.0f, 0.0f, 0.0f); // all notes start from being invisible
+
 					note.note_transforms.push_back(transform);
 					note.hit_times.push_back(time);
-				}
-				notes.push_back(note);
-
-				for (uint64_t i = 0; i < note.note_transforms.size(); i++) {
-					scene.drawables.emplace_back(note.note_transforms[i]);
-					Scene::Drawable &d = scene.drawables.back();
-					d.pipeline = lit_color_texture_program_pipeline;
-					d.pipeline.vao = main_meshes_for_lit_color_texture_program;
-					d.pipeline.type = note_drawable.type;
-					d.pipeline.start = note_drawable.start;
-					d.pipeline.count = note_drawable.count;
 				}
 			} else {
 				float coord = std::stof(note_info[2]);
 				float time = std::stof(note_info[4]);
-				NoteType type = NoteType::SINGLE;
-				if (note_type == "burst") type = NoteType::BURST;
 				std::pair<float, float> coords = get_coords(dir, coord);
 				
-				NoteInfo note;
-				note.noteType = type;
-				note.beenHit = false;
+				note.noteType = note_type == "single" ? NoteType::SINGLE : NoteType::BURST;
+
 				Scene::Transform *transform = new Scene::Transform;
 				transform->name = "Note";
 				transform->position = glm::vec3(coords.first, coords.second, init_note_depth);
 				transform->scale = glm::vec3(0.0f, 0.0f, 0.0f); // all notes start from being invisible
+
 				note.note_transforms.push_back(transform);
 				note.hit_times.push_back(time);
-				notes.push_back(note);
+			}
 
-				scene.drawables.emplace_back(note.note_transforms[0]);
+			notes.push_back(note);
+
+			for (int i = 0; i < note.note_transforms.size(); i++) {
+				scene.drawables.emplace_back(note.note_transforms[i]);
 				Scene::Drawable &d = scene.drawables.back();
 				d.pipeline = lit_color_texture_program_pipeline;
 				d.pipeline.vao = main_meshes_for_lit_color_texture_program;
@@ -290,29 +286,28 @@ void PlayMode::hit_note(NoteInfo* note) {
 // current idea: find smallest distance between ray and each note
 // since notes are made in time order, we can take the first one that we're close enough to
 // radius = scale
-hitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
-	hitInfo hits;
-	hits.hit = false;
+HitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 	float dist = glm::length(dir);
+
 	// https://mathworld.wolfram.com/Point-LineDistance3-Dimensional.html
-	for (auto &note : notes) {
+	for (int i = note_start_idx; i < note_end_idx; i++) {
 		// assume we only have singles
-		if(note.noteType == NoteType::SINGLE) {
-			Scene::Transform *trans = note.note_transforms[0];
+		if (notes[i].noteType == NoteType::SINGLE) {
+			Scene::Transform *trans = notes[i].note_transforms[0];
 			float radius = trans->scale.x;
 			float d = glm::length(glm::cross(trans->position - pos, trans->position - (pos + dir))) / dist;
 			// std::cout << ray.x << " " << ray.y << " " << ray.z << "\n";
 			// std::cout << trans->position.x << " " << trans->position.y << " " << trans->position.z << "\n";
 			// std::cout << radius << " d: " << d << "\n";
 			if(d < radius) {
-				hits.hit = true;
-				hits.note = &note;
+				HitInfo hits;
+				hits.note = &notes[i];
 				return hits;
 			}
 		}
 	}
-	std::cout << notes.size() << " size\n";
-	return hits;
+	
+	return HitInfo();
 }
 
 void PlayMode::check_hit() {
@@ -321,12 +316,12 @@ void PlayMode::check_hit() {
 	// rotate ray to get the direction from camera
 	ray = glm::rotate(camera->transform->rotation, ray);
 	// trace the ray to see if we hit a note
-	hitInfo hits = trace_ray(camera->transform->position, ray);
+	HitInfo hits = trace_ray(camera->transform->position, ray);
 
 	auto current_time = std::chrono::high_resolution_clock::now();
 	float music_time = std::chrono::duration<float>(current_time - music_start_time).count();
 	// if we hit a note, check to see if we hit a good time
-	if(hits.hit) {
+	if(hits.note) {
 		std::cout << music_time << " bye" << "\n";
 		std::cout << hits.note->hit_times[0] << "\n";
 		// valid hit time
@@ -363,6 +358,9 @@ void PlayMode::start_song(int idx) {
 	reset_cam();
 	SDL_SetRelativeMouseMode(SDL_TRUE);
 
+	note_start_idx = 0;
+	note_end_idx = 0;
+
 	has_started = true;
 	gameState = PLAYING;
 	chosen_song = idx;
@@ -378,10 +376,12 @@ void PlayMode::start_song(int idx) {
 void PlayMode::restart_song() {
 	// clear loaded assets
 	active_song->stop();
-	for (int i = 0; i < notes.size(); i++) {
-		auto note = notes[i];
-		for (uint64_t j = 0; j < note.note_transforms.size(); j++) {
-			note.note_transforms[j]->scale = glm::vec3(0.0f, 0.0f, 0.0f);
+	for (auto &note: notes) {
+		note.beenHit = false;
+		note.isActive = false;
+		for (uint64_t i = 0; i < note.note_transforms.size(); i++) {
+			note.note_transforms[i]->position = glm::vec3(note.note_transforms[i]->position.x, note.note_transforms[i]->position.y, init_note_depth);
+			note.note_transforms[i]->scale = glm::vec3(0.0f, 0.0f, 0.0f);
 		}
 	}
 
