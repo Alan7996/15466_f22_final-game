@@ -204,14 +204,16 @@ void PlayMode::read_notes(std::string song_name) {
 					transform->scale = glm::vec3(0.0f, 0.0f, 0.0f); // all notes start from being invisible
 					float angle = 0.0f;
 					// if the xs are the same
+					// wrong at the moment due to get_coords being wrong
 					if(coords_begin.first == coords_end.first) {
-						angle = atan2(fabsf(coords_begin.second - coords_end.second) / 2.0f, time_end - time_begin);
+						angle = atan2((coords_begin.second - coords_end.second) / 2.0f, time_end - time_begin);
+						transform->rotation = normalize(glm::angleAxis(angle, glm::vec3(1.0f, 0.0f, 0.0f)));
 					}
 					// otherwise the ys are the same
 					else {
-						angle = atan2(fabsf(coords_begin.first - coords_end.first) / 2.0f, time_end - time_begin);
+						angle = atan2((coords_begin.first - coords_end.first) / 2.0f, time_end - time_begin);
+						transform->rotation = normalize(glm::angleAxis(angle, glm::vec3(0.0f, 1.0f, 0.0f)));
 					}
-					transform->rotation = normalize(glm::angleAxis(angle, glm::vec3(1.0f, 0.0f, 0.0f)));
 
 					note.note_transforms.push_back(transform);
 					note.hit_times.push_back(time_begin);
