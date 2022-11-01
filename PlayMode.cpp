@@ -230,6 +230,7 @@ void PlayMode::read_notes(std::string song_name) {
 				transform->name = "Note";
 				transform->position = glm::vec3(coords.first, coords.second, init_note_depth);
 				transform->scale = glm::vec3(0.0f, 0.0f, 0.0f); // all notes start from being invisible
+				transform->rotation = (dir == "left" || dir == "right") ? glm::quat(0.7071f, 0.0f, 0.0f, 0.7071f) : glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
 
 				note.note_transforms.push_back(transform);
 				note.hit_times.push_back(time);
