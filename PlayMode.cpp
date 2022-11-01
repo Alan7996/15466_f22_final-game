@@ -60,6 +60,7 @@ PlayMode::PlayMode() : scene(*main_scene) {
 	for (auto &d : scene.drawables) {
 		if (d.transform->name.find("Note") != std::string::npos) {
 			// set up default skin array
+			// change in future to support names >= 10
 			int idx = d.transform->name.at(4) - '0';
 			default_skin[idx].type = d.pipeline.type;
 			default_skin[idx].start = d.pipeline.start;
