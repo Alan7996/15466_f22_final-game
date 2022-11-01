@@ -71,6 +71,7 @@ struct PlayMode : Mode {
 	void read_song();
 
 	// game state related
+	void reset_song();
 	void to_menu();
 	void start_song(int idx, bool restart);
 	void restart_song();

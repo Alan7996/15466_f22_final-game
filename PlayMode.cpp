@@ -429,6 +429,19 @@ void PlayMode::check_hit() {
 	}
 }
 
+void PlayMode::reset_song() {
+	// reset loaded assets
+	if (active_song) active_song->stop();
+	for (auto &note: notes) {
+		note.beenHit = false;
+		note.isActive = false;
+		for (uint64_t i = 0; i < note.note_transforms.size(); i++) {
+			note.note_transforms[i]->position = glm::vec3(note.note_transforms[i]->position.x, note.note_transforms[i]->position.y, init_note_depth);
+			note.note_transforms[i]->scale = glm::vec3(0.0f, 0.0f, 0.0f);
+		}
+	}
+}
+
 // to_menu should be called either when the game is launched or when going from PLAYING -> PAUSED -> select EXIT
 void PlayMode::to_menu() {
 	// reset all state variables
@@ -436,6 +449,7 @@ void PlayMode::to_menu() {
 	gameState = MENU;
 	hovering_text = (uint8_t)chosen_song;
 
+	reset_song();
 	reset_cam();
 
 	// stop currently playing song
@@ -465,16 +479,7 @@ void PlayMode::start_song(int idx, bool restart) {
 
 // restart_song should only be called when going from PLAYING -> PAUSED -> select RESTART
 void PlayMode::restart_song() {
-	// reset loaded assets
-	active_song->stop();
-	for (auto &note: notes) {
-		note.beenHit = false;
-		note.isActive = false;
-		for (uint64_t i = 0; i < note.note_transforms.size(); i++) {
-			note.note_transforms[i]->position = glm::vec3(note.note_transforms[i]->position.x, note.note_transforms[i]->position.y, init_note_depth);
-			note.note_transforms[i]->scale = glm::vec3(0.0f, 0.0f, 0.0f);
-		}
-	}
+	reset_song();
 
 	has_started = false;
 	start_song(chosen_song, true);
