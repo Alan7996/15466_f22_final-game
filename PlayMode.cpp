@@ -172,7 +172,6 @@ void PlayMode::read_notes(std::string song_name) {
 		while(getline(file, line)){
 			std::vector<std::string> note_info;
 			tokenize(line, delim, note_info);
-
 			std::string note_type = note_info[0];
 			int note_mesh_idx = stoi(note_info[1]);
 			std::string dir = note_info[2];
@@ -187,18 +186,25 @@ void PlayMode::read_notes(std::string song_name) {
 			if (note_type == "hold") {
 				note.noteType = NoteType::HOLD;
 
-				for (int i = 0; i < idx - 3; i++) {
-					float coord = std::stof(note_info[3+i]);
-					float time = std::stof(note_info[idx+1+i]);
-					std::pair<float, float> coords = get_coords(dir, coord);
+				for (int i = 0; i < idx - 4; i++) {
+					float coord_begin = std::stof(note_info[3+i]);
+					float time_begin = std::stof(note_info[idx+1+i]);
+
+					float coord_end = std::stof(note_info[3+i+1]);
+					float time_end = std::stof(note_info[idx+1+i+1]);
+					// std::cout << coord_begin << " " << coord_end << ", " << time_begin << " " << time_end << "\n";
+					std::pair<float, float> coords_begin = get_coords(dir, coord_begin);
+					std::pair<float, float> coords_end = get_coords(dir, coord_end);
 
 					Scene::Transform *transform = new Scene::Transform;
 					transform->name = "Note";
-					transform->position = glm::vec3(coords.first, coords.second, init_note_depth);
+					transform->position = glm::vec3((coords_begin.first + coords_end.first) / 2.0f, (coords_begin.second + coords_end.second) / 2.0f, init_note_depth);
 					transform->scale = glm::vec3(0.0f, 0.0f, 0.0f); // all notes start from being invisible
+					// need to rotate
 
 					note.note_transforms.push_back(transform);
-					note.hit_times.push_back(time);
+					note.hit_times.push_back(time_begin);
+					note.hit_times.push_back(time_end);
 				}
 			} else {
 				float coord = std::stof(note_info[3]);
@@ -264,23 +270,32 @@ void PlayMode::update_notes() {
 
 					if (note_start_idx == (int)notes.size()) game_over(true);
 				}
+				else {
+					// move the note
+					float delta_time = music_time - (note.hit_times[j] - note_approach_time);
+					float note_speed = (border_depth - init_note_depth) / note_approach_time;
+					note.note_transforms[j]->position.z = init_note_depth + note_speed * delta_time;
+				}
 			} else {
 				if (!note.beenHit) {
 					if (music_time >= note.hit_times[j] - note_approach_time + real_song_offset) {
 						// spawn the note
 						note.isActive = true;
-						note.note_transforms[j]->scale = glm::vec3(0.1f, 0.1f, 0.1f);
+						if(note.hit_times.size() > 1) {
+							std::cout << "hi hold\n";
+							std::cout << music_time << " \n";
+							note.note_transforms[j]->scale = glm::vec3(0.1f, 0.1f, note.hit_times[1] - note.hit_times[0]);
+							note.note_transforms[j]->position.z = init_note_depth;
+						}
+						else {
+							note.note_transforms[j]->scale = glm::vec3(0.1f, 0.1f, 0.1f);
+						}
 						note_end_idx += 1;
 					} else {
 						continue;
 					}
 				}
 			}
-
-			// move the note
-			float delta_time = music_time - (note.hit_times[j] - note_approach_time);
-			float note_speed = (border_depth - init_note_depth) / note_approach_time;
-			note.note_transforms[j]->position.z = init_note_depth + note_speed * delta_time;
 		}
 	}
 }
@@ -338,30 +353,6 @@ bool PlayMode::bbox_intersect(glm::vec3 pos, glm::vec3 dir, glm::vec3 min, glm::
 
 // attempt bounding box implementation
 HitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
-	// hackish code that only works for a sphere, need to come up with another way to detect collision as we don't have mesh info in a nice format
-	// current idea: find smallest distance between ray and each note
-	// since notes are made in time order, we can take the first one that we're close enough to
-	// radius = scale
-
-	// float dist = glm::length(dir);
-
-	// // https://mathworld.wolfram.com/Point-LineDistance3-Dimensional.html
-	// for (int i = note_start_idx; i < note_end_idx; i++) {
-	// 	// assume we only have singles
-	// 	if (notes[i].noteType == NoteType::SINGLE) {
-	// 		Scene::Transform *trans = notes[i].note_transforms[0];
-	// 		float radius = trans->scale.x;
-	// 		float d = glm::length(glm::cross(trans->position - pos, trans->position - (pos + dir))) / dist;
-	// 		if(d < radius) {
-	// 			HitInfo hits;
-	// 			hits.note = &notes[i];
-	// 			return hits;
-	// 		}
-	// 	}
-	// }
-	
-	// return HitInfo();
-
 	for (int i = note_start_idx; i < note_end_idx; i++) {
 		NoteInfo &note = notes[i];
 		// single type
@@ -373,6 +364,7 @@ HitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 			glm::vec3 trans_max = trans->make_local_to_parent() * glm::vec4(note.max, 1.f);
 			// do bbox intersection
 			if(bbox_intersect(pos, dir, trans_min, trans_max)) {
+				std::cout << "single\n";
 				HitInfo hits;
 				hits.note = &notes[i];
 				return hits;
@@ -390,6 +382,7 @@ HitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 			glm::vec3 trans_max = trans->make_local_to_parent() * glm::vec4(note.max, 1.f);
 			// do bbox intersection
 			if(bbox_intersect(pos, dir, trans_min, trans_max)) {
+				std::cout << "burst\n";
 				HitInfo hits;
 				hits.note = &notes[i];
 				return hits;
@@ -420,8 +413,8 @@ void PlayMode::check_hit() {
 	float music_time = std::chrono::duration<float>(current_time - music_start_time).count();
 	// if we hit a note, check to see if we hit a good time
 	if(hits.note) {
-		std::cout << music_time << " bye" << "\n";
-		std::cout << hits.note->hit_times[0] << "\n";
+		// std::cout << music_time << " bye" << "\n";
+		// std::cout << hits.note->hit_times[0] << "\n";
 		// valid hit time
 		if(fabs(music_time - hits.note->hit_times[0] + real_song_offset) < valid_hit_time_delta) {
 			std::cout << "valid hit\n";
@@ -561,8 +554,11 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 	else if (evt.type == SDL_MOUSEBUTTONDOWN) {
 		SDL_SetRelativeMouseMode(SDL_TRUE);
 		if (gameState != PLAYING) return true;
-
-		check_hit();		
+		check_hit();
+	// 	hold = true;
+	// } else if (evt.type == SDL_MOUSBUTTONUP) {
+	// 	check_hit();
+	// 	hold = false;
 	} else if (evt.type == SDL_MOUSEMOTION) {
 		if (gameState != PLAYING) return true;
 		
