@@ -195,7 +195,6 @@ void PlayMode::read_notes(std::string song_name) {
 
 					float coord_end = std::stof(note_info[3+i+1]);
 					float time_end = std::stof(note_info[idx+1+i+1]);
-					// std::cout << coord_begin << " " << coord_end << ", " << time_begin << " " << time_end << "\n";
 					std::pair<float, float> coords_begin = get_coords(dir, coord_begin);
 					std::pair<float, float> coords_end = get_coords(dir, coord_end);
 
@@ -203,7 +202,16 @@ void PlayMode::read_notes(std::string song_name) {
 					transform->name = "Note";
 					transform->position = glm::vec3((coords_begin.first + coords_end.first) / 2.0f, (coords_begin.second + coords_end.second) / 2.0f, init_note_depth);
 					transform->scale = glm::vec3(0.0f, 0.0f, 0.0f); // all notes start from being invisible
-					// need to rotate
+					float angle = 0.0f;
+					// if the xs are the same
+					if(coords_begin.first == coords_end.first) {
+						angle = atan2(fabsf(coords_begin.second - coords_end.second) / 2.0f, time_end - time_begin);
+					}
+					// otherwise the ys are the same
+					else {
+						angle = atan2(fabsf(coords_begin.first - coords_end.first) / 2.0f, time_end - time_begin);
+					}
+					transform->rotation = normalize(glm::angleAxis(angle, glm::vec3(1.0f, 0.0f, 0.0f)));
 
 					note.note_transforms.push_back(transform);
 					note.hit_times.push_back(time_begin);
@@ -285,8 +293,6 @@ void PlayMode::update_notes() {
 						// spawn the note
 						note.isActive = true;
 						if(note.hit_times.size() > 1) {
-							std::cout << "hi hold\n";
-							std::cout << music_time << " \n";
 							note.note_transforms[j]->scale = glm::vec3(0.1f, 0.1f, note.hit_times[1] - note.hit_times[0]);
 							note.note_transforms[j]->position.z = init_note_depth;
 						}
@@ -416,8 +422,6 @@ void PlayMode::check_hit() {
 	float music_time = std::chrono::duration<float>(current_time - music_start_time).count();
 	// if we hit a note, check to see if we hit a good time
 	if(hits.note) {
-		// std::cout << music_time << " bye" << "\n";
-		// std::cout << hits.note->hit_times[0] << "\n";
 		// valid hit time
 		if(fabs(music_time - hits.note->hit_times[0] + real_song_offset) < valid_hit_time_delta) {
 			std::cout << "valid hit\n";

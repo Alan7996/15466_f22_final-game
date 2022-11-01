@@ -1,3 +1,2 @@
-single 0 up 0.8 @ 4.0
-burst 5 up 0.8 @ 6.0
-hold 9 up -0.5 0 @ 7.0 8.0
+hold 7 up 0 0.5 @ 4.0 6.0
+hold 7 up -0.5 0 @ 7.0 8.0
