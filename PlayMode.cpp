@@ -164,6 +164,8 @@ std::pair<float, float> PlayMode::get_coords(std::string dir, float coord) {
 }
 
 void PlayMode::read_notes(std::string song_name) {
+	notes.clear();
+
 	// https://www.tutorialspoint.com/read-file-line-by-line-using-cplusplus
 	std::fstream file;
 	const char* delim = " ";
