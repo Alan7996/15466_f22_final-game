@@ -57,6 +57,8 @@ PlayMode::PlayMode() : scene(*main_scene) {
 	camera = &scene.cameras.front();
 
 	std::vector<Drawable> default_skin(15);
+	float const bgscale = abs(init_note_depth - max_depth);
+
 	for (auto &d : scene.drawables) {
 		if (d.transform->name.find("Note") != std::string::npos) {
 			// set up default skin array
@@ -73,44 +75,40 @@ PlayMode::PlayMode() : scene(*main_scene) {
 			border_drawable.type = d.pipeline.type;
 			border_drawable.start = d.pipeline.start;
 			border_drawable.count = d.pipeline.count;
-		}
-	}
-	
-	float const bgscale = abs(init_note_depth - max_depth);
-
-	for (auto &transform : scene.transforms) {
-		if (transform.name.find("BG") != std::string::npos) {
-			if (transform.name == "BGCenter") {
-				transform.position = glm::vec3(0, 0, init_note_depth + 5.0f);
-				continue;
-			}
-
-			if (transform.name == "BGUp") {
-				transform.position = glm::vec3(0, y_scale, bgscale / 2.0f);
-				transform.scale = glm::vec3(bgscale * transform.scale.x, bgscale * transform.scale.y, 1);
-			} else if (transform.name == "BGUp2") {
-				transform.position = glm::vec3(0, y_scale, init_note_depth);
-				transform.scale = glm::vec3(bgscale * transform.scale.x, bgscale * transform.scale.y, 1);
-			} else if (transform.name == "BGDown") {
-				transform.position = glm::vec3(0, -y_scale, bgscale / 2.0f);
-				transform.scale = glm::vec3(bgscale * transform.scale.x, bgscale * transform.scale.y, 1);
-			} else if (transform.name == "BGDown2") {
-				transform.position = glm::vec3(0, -y_scale, init_note_depth);
-				transform.scale = glm::vec3(bgscale * transform.scale.x, bgscale * transform.scale.y, 1);
-			} else if (transform.name == "BGLeft") {
-				transform.position = glm::vec3(-x_scale, 0, bgscale / 2.0f);
-				transform.scale = glm::vec3(bgscale * transform.scale.x, 1, bgscale * transform.scale.z);
-			} else if (transform.name == "BGLeft2") {
-				transform.position = glm::vec3(-x_scale, 0, init_note_depth);
-				transform.scale = glm::vec3(bgscale * transform.scale.x, 1, bgscale * transform.scale.z);
-			} else if (transform.name == "BGRight") {
-				transform.position = glm::vec3(x_scale, 0, bgscale / 2.0f);
-				transform.scale = glm::vec3(bgscale * transform.scale.x, 1, bgscale * transform.scale.z);
-			} else if (transform.name == "BGRight2") {
-				transform.position = glm::vec3(x_scale, 0, init_note_depth);
-				transform.scale = glm::vec3(bgscale * transform.scale.x, 1, bgscale * transform.scale.z);
-			}
-			backgrounds.emplace_back(&transform);
+		} else if (d.transform->name == "BGCenter") {
+			d.transform->position = glm::vec3(0, 0, init_note_depth + 5.0f);
+		} else if (d.transform->name == "BGUp") {
+			d.transform->position = glm::vec3(0, y_scale, bgscale / 2.0f);
+			d.transform->scale = glm::vec3(bgscale, bgscale, 1);
+			backgrounds.emplace_back(&d);
+		} else if (d.transform->name == "BGUp2") {
+			d.transform->position = glm::vec3(0, y_scale, init_note_depth);
+			d.transform->scale = glm::vec3(bgscale, bgscale, 1);
+			backgrounds.emplace_back(&d);
+		} else if (d.transform->name == "BGDown") {
+			d.transform->position = glm::vec3(0, -y_scale, bgscale / 2.0f);
+			d.transform->scale = glm::vec3(bgscale, bgscale, 1);
+			backgrounds.emplace_back(&d);
+		} else if (d.transform->name == "BGDown2") {
+			d.transform->position = glm::vec3(0, -y_scale, init_note_depth);
+			d.transform->scale = glm::vec3(bgscale, bgscale, 1);
+			backgrounds.emplace_back(&d);
+		} else if (d.transform->name == "BGLeft") {
+			d.transform->position = glm::vec3(-x_scale, 0, bgscale / 2.0f);
+			d.transform->scale = glm::vec3(bgscale, 1, bgscale);
+			backgrounds.emplace_back(&d);
+		} else if (d.transform->name == "BGLeft2") {
+			d.transform->position = glm::vec3(-x_scale, 0, init_note_depth);
+			d.transform->scale = glm::vec3(bgscale, 1, bgscale);
+			backgrounds.emplace_back(&d);
+		} else if (d.transform->name == "BGRight") {
+			d.transform->position = glm::vec3(x_scale, 0, bgscale / 2.0f);
+			d.transform->scale = glm::vec3(bgscale, 1, bgscale);
+			backgrounds.emplace_back(&d);
+		} else if (d.transform->name == "BGRight2") {
+			d.transform->position = glm::vec3(x_scale, 0, init_note_depth);
+			d.transform->scale = glm::vec3(bgscale, 1, bgscale);
+			backgrounds.emplace_back(&d);
 		}
 	}
 
@@ -298,8 +296,8 @@ void PlayMode::update_bg(float elapsed) {
 
 	float note_speed = (border_depth - init_note_depth) / note_approach_time;
 	for (int i = 0; i < backgrounds.size(); i++) {
-		backgrounds[i]->position.z = backgrounds[i]->position.z + note_speed * elapsed;
-		if (backgrounds[i]->position.z > 25.0f) backgrounds[i]->position.z = init_note_depth;
+		backgrounds[i]->transform->position.z = backgrounds[i]->transform->position.z + note_speed * elapsed;
+		if (backgrounds[i]->transform->position.z > 25.0f) backgrounds[i]->transform->position.z = init_note_depth;
 	}
 
 }

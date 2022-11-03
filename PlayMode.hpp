@@ -99,7 +99,7 @@ struct PlayMode : Mode {
 	Scene::Camera *camera = nullptr;
 
 	// background scrolling
-	std::vector<Scene::Transform*> backgrounds;
+	std::vector<Scene::Drawable *> backgrounds;
 
 	// assets
 	// TODO : edit so that gun and border_drawable's are not drawn in menu
