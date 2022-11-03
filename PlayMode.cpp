@@ -641,7 +641,13 @@ void PlayMode::game_over(bool didClear) {
 bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
 
 	if (evt.type == SDL_KEYDOWN) {
-		if (gameState == MENU) {
+		if (evt.key.keysym.sym == SDLK_EQUALS) {
+			mouseSens = (mouseSens + mouseSenseInc >= maxMouseSens) ? maxMouseSens : mouseSens + mouseSenseInc;
+			return true;
+		} else if (evt.key.keysym.sym == SDLK_MINUS) {
+			mouseSens = (mouseSens - mouseSenseInc <= minMouseSens) ? minMouseSens : mouseSens - mouseSenseInc;
+			return true;
+		} else if (gameState == MENU) {
 			if (evt.key.keysym.sym == SDLK_RETURN) {
 				start_song(hovering_text, false);
 				return true;
@@ -700,8 +706,8 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 		delta.x *= float(window_size.y) / float(window_size.x);
 		delta.y = evt.motion.yrel / float(window_size.y) * -2.0f;
 
-		cam.azimuth -= 0.4f * delta.x;
-		cam.elevation -= 0.4f * delta.y;
+		cam.azimuth -= mouseSens * delta.x;
+		cam.elevation -= mouseSens * delta.y;
 
 		cam.azimuth /= 2.0f * 3.1415926f;
 		cam.azimuth -= std::round(cam.azimuth);

@@ -141,6 +141,11 @@ struct PlayMode : Mode {
 	float valid_hit_time_delta = 0.3f;
 	float real_song_offset = 0.075f;
 
+	float mouseSens = 0.4f;
+	float const minMouseSens = 0.1f;
+	float const maxMouseSens = 1.0f;
+	float const mouseSenseInc = 0.1f;
+
 
 	// from ShowSceneMode.hpp to fix the up axis
 	struct {
