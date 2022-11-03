@@ -63,7 +63,7 @@ struct PlayMode : Mode {
 	void hit_note(NoteInfo* note);
 
 	// cast a ray to detect collision with a mesh
-	bool bbox_intersect(glm::vec3 pos, glm::vec3 dir, glm::vec3 min, glm::vec3 max, float &tmin, float &tmax);
+	bool obb_bbox_intersect(glm::vec3 pos, glm::vec3 dir, glm::vec4 min, glm::vec4 max, glm::mat4x3 transform, float &int_dist);
 	HitInfo trace_ray(glm::vec3 pos, glm::vec3 dir);
 	void check_hit();
 
