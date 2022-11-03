@@ -73,7 +73,45 @@ PlayMode::PlayMode() : scene(*main_scene) {
 			border_drawable.type = d.pipeline.type;
 			border_drawable.start = d.pipeline.start;
 			border_drawable.count = d.pipeline.count;
-		} 
+		}
+	}
+	
+	float const bgscale = abs(init_note_depth - max_depth);
+
+	for (auto &transform : scene.transforms) {
+		if (transform.name.find("BG") != std::string::npos) {
+			if (transform.name == "BGCenter") {
+				transform.position = glm::vec3(0, 0, init_note_depth + 5.0f);
+				continue;
+			}
+
+			if (transform.name == "BGUp") {
+				transform.position = glm::vec3(0, y_scale, bgscale / 2.0f);
+				transform.scale = glm::vec3(bgscale * transform.scale.x, bgscale * transform.scale.y, 1);
+			} else if (transform.name == "BGUp2") {
+				transform.position = glm::vec3(0, y_scale, init_note_depth);
+				transform.scale = glm::vec3(bgscale * transform.scale.x, bgscale * transform.scale.y, 1);
+			} else if (transform.name == "BGDown") {
+				transform.position = glm::vec3(0, -y_scale, bgscale / 2.0f);
+				transform.scale = glm::vec3(bgscale * transform.scale.x, bgscale * transform.scale.y, 1);
+			} else if (transform.name == "BGDown2") {
+				transform.position = glm::vec3(0, -y_scale, init_note_depth);
+				transform.scale = glm::vec3(bgscale * transform.scale.x, bgscale * transform.scale.y, 1);
+			} else if (transform.name == "BGLeft") {
+				transform.position = glm::vec3(-x_scale, 0, bgscale / 2.0f);
+				transform.scale = glm::vec3(bgscale * transform.scale.x, 1, bgscale * transform.scale.z);
+			} else if (transform.name == "BGLeft2") {
+				transform.position = glm::vec3(-x_scale, 0, init_note_depth);
+				transform.scale = glm::vec3(bgscale * transform.scale.x, 1, bgscale * transform.scale.z);
+			} else if (transform.name == "BGRight") {
+				transform.position = glm::vec3(x_scale, 0, bgscale / 2.0f);
+				transform.scale = glm::vec3(bgscale * transform.scale.x, 1, bgscale * transform.scale.z);
+			} else if (transform.name == "BGRight2") {
+				transform.position = glm::vec3(x_scale, 0, init_note_depth);
+				transform.scale = glm::vec3(bgscale * transform.scale.x, 1, bgscale * transform.scale.z);
+			}
+			backgrounds.emplace_back(&transform);
+		}
 	}
 
 	beatmap_skins.emplace_back(std::make_pair("Note", default_skin));
@@ -253,6 +291,19 @@ void PlayMode::read_notes(std::string song_name) {
 }
 
 
+void PlayMode::update_bg(float elapsed) {
+	assert(gameState == PLAYING);
+	printf("%f", elapsed);
+	std::cout << " wat" << std::endl;
+
+	float note_speed = (border_depth - init_note_depth) / note_approach_time;
+	for (int i = 0; i < backgrounds.size(); i++) {
+		backgrounds[i]->position.z = backgrounds[i]->position.z + note_speed * elapsed;
+		if (backgrounds[i]->position.z > 25.0f) backgrounds[i]->position.z = init_note_depth;
+	}
+
+}
+
 /* We maintain the list of notes to be checked in the following way : 
  * We keep track of two types of variables. First are note_start_idx and 
  * note_end_idx, which records the range of notes that have spawned but have
@@ -267,7 +318,7 @@ void PlayMode::read_notes(std::string song_name) {
  * check if we should start the next note or not.
 */
 void PlayMode::update_notes() {
-	if (gameState != PLAYING) return;
+	assert(gameState == PLAYING);
 
 	auto current_time = std::chrono::high_resolution_clock::now();
 	float music_time = std::chrono::duration<float>(current_time - music_start_time).count();
@@ -642,10 +693,10 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 
 	if (evt.type == SDL_KEYDOWN) {
 		if (evt.key.keysym.sym == SDLK_EQUALS) {
-			mouseSens = (mouseSens + mouseSenseInc >= maxMouseSens) ? maxMouseSens : mouseSens + mouseSenseInc;
+			mouse_sens = (mouse_sens + mouse_sens_inc >= mouse_sens_max) ? mouse_sens_max : mouse_sens + mouse_sens_inc;
 			return true;
 		} else if (evt.key.keysym.sym == SDLK_MINUS) {
-			mouseSens = (mouseSens - mouseSenseInc <= minMouseSens) ? minMouseSens : mouseSens - mouseSenseInc;
+			mouse_sens = (mouse_sens - mouse_sens_inc <= mouse_sens_min) ? mouse_sens_min : mouse_sens - mouse_sens_inc;
 			return true;
 		} else if (gameState == MENU) {
 			if (evt.key.keysym.sym == SDLK_RETURN) {
@@ -706,8 +757,8 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 		delta.x *= float(window_size.y) / float(window_size.x);
 		delta.y = evt.motion.yrel / float(window_size.y) * -2.0f;
 
-		cam.azimuth -= mouseSens * delta.x;
-		cam.elevation -= mouseSens * delta.y;
+		cam.azimuth -= mouse_sens * delta.x;
+		cam.elevation -= mouse_sens * delta.y;
 
 		cam.azimuth /= 2.0f * 3.1415926f;
 		cam.azimuth -= std::round(cam.azimuth);
@@ -724,6 +775,7 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 
 void PlayMode::update(float elapsed) {
 	if (gameState == PLAYING) {
+		update_bg(elapsed);
 		update_notes();
 	}
 }

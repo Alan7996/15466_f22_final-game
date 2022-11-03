@@ -59,6 +59,7 @@ struct PlayMode : Mode {
 	virtual std::pair<float, float> get_coords(std::string dir, float coord);
 
 	// update note visibility and position
+	void update_bg(float elapsed);
 	virtual void update_notes();
 	void hit_note(NoteInfo* note);
 
@@ -96,6 +97,9 @@ struct PlayMode : Mode {
 	Scene scene;
 
 	Scene::Camera *camera = nullptr;
+
+	// background scrolling
+	std::vector<Scene::Transform*> backgrounds;
 
 	// assets
 	// TODO : edit so that gun and border_drawable's are not drawn in menu
@@ -137,14 +141,15 @@ struct PlayMode : Mode {
 	// TODO : should include some scaling variable to allow for different note speed settings to automatically affect these
 	float init_note_depth = -20.0f;
 	float border_depth = -0.0f;
+	float max_depth = 10.0f;
 	float note_approach_time = 4.0f; // time between when the note shows up and hit time
 	float valid_hit_time_delta = 0.3f;
 	float real_song_offset = 0.075f;
 
-	float mouseSens = 0.4f;
-	float const minMouseSens = 0.1f;
-	float const maxMouseSens = 1.0f;
-	float const mouseSenseInc = 0.1f;
+	float mouse_sens = 0.4f;
+	float const mouse_sens_min = 0.1f;
+	float const mouse_sens_max = 1.0f;
+	float const mouse_sens_inc = 0.1f;
 
 
 	// from ShowSceneMode.hpp to fix the up axis
