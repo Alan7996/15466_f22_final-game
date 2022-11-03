@@ -148,17 +148,17 @@ std::pair<float, float> PlayMode::get_coords(std::string dir, float coord) {
 	float x = 0.0f;
 	float y = 0.0f;
 	if (dir == "left") {
-		x = coord;
-		y = y_scale;
-	} else if (dir == "right") {
-		x = coord;
-		y = -y_scale;
-	} else if (dir == "up") {
-		x = x_scale;
-		y = coord;
-	} else if (dir == "down") {
 		x = -x_scale;
 		y = coord;
+	} else if (dir == "right") {
+		x = x_scale;
+		y = coord;
+	} else if (dir == "up") {
+		x = coord;
+		y = y_scale;
+	} else if (dir == "down") {
+		x = coord;
+		y = -y_scale;
 	} 
 	return std::make_pair(x, y);
 }
@@ -325,10 +325,10 @@ void PlayMode::hit_note(NoteInfo* note) {
 }
 
 // bbox hit from https://www.scratchapixel.com/lessons/3d-basic-rendering/minimal-ray-tracer-rendering-simple-shapes/ray-box-intersection
-bool PlayMode::bbox_intersect(glm::vec3 pos, glm::vec3 dir, glm::vec3 min, glm::vec3 max) 
+bool PlayMode::bbox_intersect(glm::vec3 pos, glm::vec3 dir, glm::vec3 min, glm::vec3 max, float &tmin, float &tmax) 
 { 
-    float tmin = (min.x - pos.x) / dir.x; 
-    float tmax = (max.x - pos.x) / dir.x; 
+    tmin = (min.x - pos.x) / dir.x; 
+    tmax = (max.x - pos.x) / dir.x; 
  
     if (tmin > tmax) std::swap(tmin, tmax); 
  
@@ -372,10 +372,12 @@ HitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 			// get transform
 			Scene::Transform *trans = note.note_transforms[0];
 			// transform bounding box of note to world space
-			glm::vec3 trans_min = trans->make_local_to_parent() * glm::vec4(note.min, 1.f);
-			glm::vec3 trans_max = trans->make_local_to_parent() * glm::vec4(note.max, 1.f);
+			glm::vec3 trans_min = trans->make_local_to_world() * glm::vec4(note.min, 1.f);
+			glm::vec3 trans_max = trans->make_local_to_world() * glm::vec4(note.max, 1.f);
+			float tmin;
+			float tmax;
 			// do bbox intersection
-			if(bbox_intersect(pos, dir, trans_min, trans_max)) {
+			if(bbox_intersect(pos, dir, trans_min, trans_max, tmin, tmax)) {
 				std::cout << "single\n";
 				HitInfo hits;
 				hits.note = &notes[i];
@@ -390,10 +392,12 @@ HitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 			// get transform
 			Scene::Transform *trans = note.note_transforms[0];
 			// transform bounding box of note to world space
-			glm::vec3 trans_min = trans->make_local_to_parent() * glm::vec4(note.min, 1.f);
-			glm::vec3 trans_max = trans->make_local_to_parent() * glm::vec4(note.max, 1.f);
+			glm::vec3 trans_min = trans->make_local_to_world() * glm::vec4(note.min, 1.f);
+			glm::vec3 trans_max = trans->make_local_to_world() * glm::vec4(note.max, 1.f);
+			float tmin;
+			float tmax;
 			// do bbox intersection
-			if(bbox_intersect(pos, dir, trans_min, trans_max)) {
+			if(bbox_intersect(pos, dir, trans_min, trans_max, tmin, tmax)) {
 				std::cout << "burst\n";
 				HitInfo hits;
 				hits.note = &notes[i];
