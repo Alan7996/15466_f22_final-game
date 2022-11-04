@@ -502,12 +502,9 @@ HitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 		if (note.noteType == NoteType::SINGLE) {
 			// get transform
 			Scene::Transform *trans = note.note_transforms[0];
-			// transform bounding box of note to world space
-			glm::vec4 min = glm::vec4(note.min, 1.f);
-			glm::vec4 max = glm::vec4(note.max, 1.f);
 			float int_dist = 0.0f;
 			// do bbox intersection
-			if(obb_bbox_intersect(pos, dir, min, max, trans->make_local_to_world(), int_dist)) {
+			if(obb_bbox_intersect(pos, dir, note.min, note.max, trans->make_local_to_world(), int_dist)) {
 				std::cout << "single\n";
 				HitInfo hits;
 				hits.note = &notes[i];
@@ -522,11 +519,9 @@ HitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 			// get transform
 			Scene::Transform *trans = note.note_transforms[0];
 			// transform bounding box of note to world space
-			glm::vec4 min = glm::vec4(note.min, 1.f);
-			glm::vec4 max = glm::vec4(note.max, 1.f);
 			float int_dist = 0.0f;
 			// do bbox intersection
-			if(obb_bbox_intersect(pos, dir, min, max, trans->make_local_to_world(), int_dist)) {
+			if(obb_bbox_intersect(pos, dir, note.min, note.max, trans->make_local_to_world(), int_dist)) {
 				std::cout << "burst\n";
 				HitInfo hits;
 				hits.note = &notes[i];
@@ -550,7 +545,7 @@ void PlayMode::check_hit() {
 	// ray from camera position to origin (p1 - p2)
 	glm::vec3 ray = glm::vec3(0) - camera->transform->position;
 	// rotate ray to get the direction from camera
-	ray = glm::rotate(camera->transform->rotation, ray);
+	ray = glm::normalize(glm::rotate(camera->transform->rotation, ray));
 	// trace the ray to see if we hit a note
 	HitInfo hits = trace_ray(camera->transform->position, ray);
 
