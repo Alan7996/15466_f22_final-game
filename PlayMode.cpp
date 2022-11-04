@@ -291,14 +291,14 @@ void PlayMode::read_notes(std::string song_name) {
 
 void PlayMode::update_bg(float elapsed) {
 	assert(gameState == PLAYING);
-	printf("%f", elapsed);
-	std::cout << " wat" << std::endl;
+	// printf("%f", elapsed);
+	// std::cout << " wat" << std::endl;
 
-	float note_speed = (border_depth - init_note_depth) / note_approach_time;
-	for (int i = 0; i < backgrounds.size(); i++) {
-		backgrounds[i]->transform->position.z = backgrounds[i]->transform->position.z + note_speed * elapsed;
-		if (backgrounds[i]->transform->position.z > 25.0f) backgrounds[i]->transform->position.z = init_note_depth;
-	}
+	// float note_speed = (border_depth - init_note_depth) / note_approach_time;
+	// for (int i = 0; i < backgrounds.size(); i++) {
+	// 	backgrounds[i]->transform->position.z = backgrounds[i]->transform->position.z + note_speed * elapsed;
+	// 	if (backgrounds[i]->transform->position.z > 25.0f) backgrounds[i]->transform->position.z = init_note_depth;
+	// }
 
 }
 
@@ -356,6 +356,12 @@ void PlayMode::update_notes() {
 						continue;
 					}
 				}
+				else {
+					note.note_transforms[j]->scale = glm::vec3(0.0f, 0.0f, 0.0f);
+					note_start_idx += 1;
+
+					if (note_start_idx == (int)notes.size()) game_over(true);
+				}
 			}
 		}
 	}
@@ -373,7 +379,6 @@ void PlayMode::hit_note(NoteInfo* note) {
 
 }
 
-// bbox hit from https://www.scratchapixel.com/lessons/3d-basic-rendering/minimal-ray-tracer-rendering-simple-shapes/ray-box-intersection
 // OBB hit from http://www.opengl-tutorial.org/miscellaneous/clicking-on-objects/picking-with-custom-ray-obb-function/
 bool PlayMode::obb_bbox_intersect(glm::vec3 pos, glm::vec3 dir, glm::vec4 min, glm::vec4 max, glm::mat4x3 transform, float &int_dist) 
 { 
@@ -391,29 +396,29 @@ bool PlayMode::obb_bbox_intersect(glm::vec3 pos, glm::vec3 dir, glm::vec4 min, g
 
 		if ( fabs(f) > 0.001f ){ // Standard case
 
-			float t1 = (e+min.x)/f; // Intersection with the "left" plane
-			float t2 = (e+max.x)/f; // Intersection with the "right" plane
+			float t1 = (e + min.x) / f; // Intersection with the "left" plane
+			float t2 = (e + max.x) / f; // Intersection with the "right" plane
 			// t1 and t2 now contain distances betwen ray origin and ray-plane intersections
 
 			// We want t1 to represent the nearest intersection, 
 			// so if it's not the case, invert t1 and t2
-			if (t1 > t2){
+			if (t1 > t2) {
 				float w = t1;
 				t1 = t2;
 				t2 = w; // swap t1 and t2
 			}
 
 			// tMax is the nearest "far" intersection (amongst the X,Y and Z planes pairs)
-			if ( t2 < tMax )
+			if (t2 < tMax)
 				tMax = t2;
 			// tMin is the farthest "near" intersection (amongst the X,Y and Z planes pairs)
-			if ( t1 > tMin )
+			if (t1 > tMin)
 				tMin = t1;
 
 			// And here's the trick :
 			// If "far" is closer than "near", then there is NO intersection.
 			// See the images in the tutorials for the visual explanation.
-			if (tMax < tMin )
+			if (tMax < tMin)
 				return false;
 
 		} else { // Rare case : the ray is almost parallel to the planes, so they don't have any "intersection"
@@ -435,15 +440,15 @@ bool PlayMode::obb_bbox_intersect(glm::vec3 pos, glm::vec3 dir, glm::vec4 min, g
 			float t1 = (e + min.y) / f;
 			float t2 = (e + max.y) / f;
 
-			if (t1 > t2){
+			if (t1 > t2) {
 				float w = t1;
 				t1 = t2;
 				t2 = w;
 			}
 
-			if ( t2 < tMax )
+			if (t2 < tMax)
 				tMax = t2;
-			if ( t1 > tMin )
+			if (t1 > tMin)
 				tMin = t1;
 			if (tMin > tMax)
 				return false;
@@ -467,15 +472,15 @@ bool PlayMode::obb_bbox_intersect(glm::vec3 pos, glm::vec3 dir, glm::vec4 min, g
 			float t1 = (e + min.z) / f;
 			float t2 = (e + max.z) / f;
 
-			if (t1 > t2){
+			if (t1 > t2) {
 				float w = t1;
 				t1 = t2;
 				t2 = w;
 			}
 
-			if ( t2 < tMax )
+			if (t2 < tMax)
 				tMax = t2;
-			if ( t1 > tMin )
+			if (t1 > tMin)
 				tMin = t1;
 			if (tMin > tMax)
 				return false;
@@ -485,46 +490,8 @@ bool PlayMode::obb_bbox_intersect(glm::vec3 pos, glm::vec3 dir, glm::vec4 min, g
 				return false;
 		}
 	}
-
 	int_dist = tMin;
 	return true;
-
-
-	/*
-    tmin = (min.x - pos.x) / dir.x; 
-    tmax = (max.x - pos.x) / dir.x; 
- 
-    if (tmin > tmax) std::swap(tmin, tmax); 
- 
-    float tymin = (min.y - pos.y) / dir.y; 
-    float tymax = (max.y - pos.y) / dir.y; 
- 
-    if (tymin > tymax) std::swap(tymin, tymax); 
- 
-    if ((tmin > tymax) || (tymin > tmax)) 
-        return false; 
- 
-    if (tymin > tmin) 
-        tmin = tymin; 
- 
-    if (tymax < tmax) 
-        tmax = tymax; 
- 
-    float tzmin = (min.z - pos.z) / dir.z; 
-    float tzmax = (max.z - pos.z) / dir.z; 
- 
-    if (tzmin > tzmax) std::swap(tzmin, tzmax); 
- 
-    if ((tmin > tzmax) || (tzmin > tmax)) 
-        return false; 
- 
-    if (tzmin > tmin) 
-        tmin = tzmin; 
- 
-    if (tzmax < tmax) 
-        tmax = tzmax; 
- 
-    return true;*/
 } 
 
 // attempt bounding box implementation
@@ -536,11 +503,11 @@ HitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 			// get transform
 			Scene::Transform *trans = note.note_transforms[0];
 			// transform bounding box of note to world space
-			glm::vec4 trans_min = glm::vec4(note.min, 1.f);
-			glm::vec4 trans_max = glm::vec4(note.max, 1.f);
+			glm::vec4 min = glm::vec4(note.min, 1.f);
+			glm::vec4 max = glm::vec4(note.max, 1.f);
 			float int_dist = 0.0f;
 			// do bbox intersection
-			if(obb_bbox_intersect(pos, dir, trans_min, trans_max, trans->make_local_to_world(), int_dist)) {
+			if(obb_bbox_intersect(pos, dir, min, max, trans->make_local_to_world(), int_dist)) {
 				std::cout << "single\n";
 				HitInfo hits;
 				hits.note = &notes[i];
@@ -592,7 +559,7 @@ void PlayMode::check_hit() {
 	// if we hit a note, check to see if we hit a good time
 	if(hits.note) {
 		// valid hit time
-		std::cout << music_time << " " << hits.note->hit_times[0] + real_song_offset << "\n";
+		// std::cout << music_time << " " << hits.note->hit_times[0] + real_song_offset << "\n";
 		if(fabs(music_time - hits.note->hit_times[0] + real_song_offset) < valid_hit_time_delta) {
 			std::cout << "valid hit\n";
 			hit_note(hits.note);
