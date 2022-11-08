@@ -27,6 +27,9 @@ struct NoteInfo {
 	std::vector<Scene::Transform *> note_transforms;
 	std::vector<float> hit_times;
 	NoteType noteType = NoteType::SINGLE;
+	std::string dir;
+	float coord_begin;
+	float coord_end;
 
 	glm::vec3 min = glm::vec3();
 	glm::vec3 max = glm::vec3();
@@ -40,6 +43,7 @@ struct NoteInfo {
 struct HitInfo {
 	// might need smthing like isHitting for hold
 	struct NoteInfo *note;
+	float time;
 };
 
 struct PlayMode : Mode {
@@ -92,6 +96,8 @@ struct PlayMode : Mode {
 		uint8_t downs = 0;
 		uint8_t pressed = 0;
 	} hold;
+	//variable to keep track if mouse click is being held down
+	bool holding = false;
 
 	// local copy of the game scene
 	Scene scene;

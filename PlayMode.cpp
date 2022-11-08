@@ -220,9 +220,12 @@ void PlayMode::read_notes(std::string song_name) {
 			Mesh note_mesh = meshBuf->lookup(beatmap_skins[active_skin_idx].first + note_info[1]);
 			note.min = note_mesh.min;
 			note.max = note_mesh.max;
+			note.dir = dir;
 			// this requires a bit more thinking on how to handle hold notes
 
 			if (note_type == "hold") {
+				// TODO: instead of making one note with a bunch of transforms, maybe consider making a bunch of notes with one transform each?
+
 				note.noteType = NoteType::HOLD;
 
 				for (int i = 0; i < idx - 4; i++) {
@@ -231,6 +234,8 @@ void PlayMode::read_notes(std::string song_name) {
 
 					float coord_end = std::stof(note_info[3+i+1]);
 					float time_end = std::stof(note_info[idx+1+i+1]);
+					note.coord_begin = coord_begin;
+					note.coord_end = coord_end;
 					std::pair<float, float> coords_begin = get_coords(dir, coord_begin);
 					std::pair<float, float> coords_end = get_coords(dir, coord_end);
 
@@ -240,9 +245,8 @@ void PlayMode::read_notes(std::string song_name) {
 					transform->scale = glm::vec3(0.0f, 0.0f, 0.0f); // all notes start from being invisible
 					float angle = 0.0f;
 					// if the xs are the same
-					// wrong at the moment due to get_coords being wrong
 					if(coords_begin.first == coords_end.first) {
-						angle = atan2((coords_begin.second - coords_end.second) / 2.0f, time_end - time_begin);
+						angle = -atan2((coords_begin.second - coords_end.second) / 2.0f, time_end - time_begin);
 						transform->rotation = normalize(glm::angleAxis(angle, glm::vec3(1.0f, 0.0f, 0.0f)));
 					}
 					// otherwise the ys are the same
@@ -266,7 +270,7 @@ void PlayMode::read_notes(std::string song_name) {
 				transform->name = "Note";
 				transform->position = glm::vec3(coords.first, coords.second, init_note_depth);
 				transform->scale = glm::vec3(0.0f, 0.0f, 0.0f); // all notes start from being invisible
-				transform->rotation = (dir == "left" || dir == "right") ? glm::quat(0.7071f, 0.0f, 0.0f, 0.7071f) : glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+				transform->rotation = (dir == "left" || dir == "right") ? glm::quat(1.0f, 0.0f, 0.0f, 0.0f) : glm::quat(0.7071f, 0.0f, 0.0f, 0.7071f);
 
 				note.note_transforms.push_back(transform);
 				note.hit_times.push_back(time);
@@ -344,9 +348,9 @@ void PlayMode::update_notes() {
 					if (music_time >= note.hit_times[j] - note_approach_time + real_song_offset) {
 						// spawn the note
 						note.isActive = true;
-						if(note.hit_times.size() > 1) {
-							note.note_transforms[j]->scale = glm::vec3(0.1f, 0.1f, note.hit_times[1] - note.hit_times[0]);
-							note.note_transforms[j]->position.z = init_note_depth;
+						if(note.noteType == NoteType::HOLD) {
+							note.note_transforms[j]->scale = glm::vec3(0.1f, 0.1f, note.hit_times[j+1] - note.hit_times[j]);
+							note.note_transforms[j]->position.z = init_note_depth - (note.hit_times[j+1] - note.hit_times[j]) / 2;
 						}
 						else {
 							note.note_transforms[j]->scale = glm::vec3(0.1f, 0.1f, 0.1f);
@@ -373,8 +377,13 @@ void PlayMode::hit_note(NoteInfo* note) {
 	note->isActive = false;
 
 	// TODO : fix this for hold
-	note->note_transforms[0]->scale = glm::vec3(0.0f, 0.0f, 0.0f);
+	if(note->noteType == NoteType::HOLD) {
+		// at the moment, only one transform for hold
 
+	}
+	else {
+		note->note_transforms[0]->scale = glm::vec3(0.0f, 0.0f, 0.0f);
+	}
 	// increment score & health
 
 }
@@ -412,12 +421,13 @@ bool PlayMode::bbox_intersect(glm::vec3 pos, glm::vec3 dir, glm::vec3 min, glm::
 		t = tmax;
 		return false;
 	}
-
-	t = tmin;
+	// std::cout << tmin << " " << tmax << "\n"; 
+	t = (tmin + tmax) / 2.f;
 	return true;
 }
 
 // attempt bounding box implementation
+// currently using the same code three times, maybe think about what would actually be different between the three?
 HitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 	for (int i = note_start_idx; i < note_end_idx; i++) {
 		NoteInfo &note = notes[i];
@@ -425,6 +435,7 @@ HitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 		if (note.noteType == NoteType::SINGLE) {
 			// get transform
 			Scene::Transform *trans = note.note_transforms[0];
+			// transform ray https://stackoverflow.com/questions/44630118/ray-transformation-in-a-ray-obb-intersection-test
 			glm::mat4 inverse = trans->make_world_to_local();
 			glm::vec4 start = inverse * glm::vec4(pos, 1.0);
 			glm::vec4 direction = inverse * glm::vec4(dir, 0.0);
@@ -435,6 +446,7 @@ HitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 				std::cout << "single\n";
 				HitInfo hits;
 				hits.note = &notes[i];
+				hits.time = t;
 				return hits;
 			}
 		}
@@ -445,6 +457,7 @@ HitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 		else if(note.noteType == NoteType::BURST) {
 			// get transform
 			Scene::Transform *trans = note.note_transforms[0];
+			// transform ray https://stackoverflow.com/questions/44630118/ray-transformation-in-a-ray-obb-intersection-test
 			glm::mat4 inverse = trans->make_world_to_local();
 			glm::vec4 start = inverse * glm::vec4(pos, 1.0);
 			glm::vec4 direction = inverse * glm::vec4(dir, 0.0);
@@ -456,12 +469,32 @@ HitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 				std::cout << "burst\n";
 				HitInfo hits;
 				hits.note = &notes[i];
+				hits.time = t;
 				return hits;
 			}
 		}
 		// hold type
 		else if(note.noteType == NoteType::HOLD) {
-			
+
+			// assume we only have one hold per hold note
+
+			Scene::Transform *trans = note.note_transforms[0];
+			// transform ray https://stackoverflow.com/questions/44630118/ray-transformation-in-a-ray-obb-intersection-test
+			glm::mat4 inverse = trans->make_world_to_local();
+			glm::vec4 start = inverse * glm::vec4(pos, 1.0);
+			glm::vec4 direction = inverse * glm::vec4(dir, 0.0);
+			direction = glm::normalize(direction);
+			// transform bounding box of note to world space
+			float t = 0.0f;
+			// do bbox intersection
+			if(bbox_intersect(start, direction, note.min, note.max, t)) {
+				// initial click (whether it's the start or not)
+				std::cout << "hold\n";
+				HitInfo hits;
+				hits.note = &notes[i];
+				hits.time = t;
+				return hits;
+			}
 		}
 		else {
 			std::cout << "Incorrect note type breaks the game." << "\n";
@@ -484,18 +517,55 @@ void PlayMode::check_hit() {
 	float music_time = std::chrono::duration<float>(current_time - music_start_time).count();
 	// if we hit a note, check to see if we hit a good time
 	if(hits.note) {
-		// valid hit time
-		// std::cout << music_time << " " << hits.note->hit_times[0] + real_song_offset << "\n";
-		if(fabs(music_time - hits.note->hit_times[0] + real_song_offset) < valid_hit_time_delta) {
-			std::cout << "valid hit\n";
-			hit_note(hits.note);
+		if(hits.note->noteType == NoteType::HOLD) {
+			// only considers first 0.2 seconds of the hold -> need to change
+			if(fabs(music_time - hits.note->hit_times[0] + real_song_offset) < valid_hit_time_delta && !holding) {
+				// initial click
+				score += 50;
+				std::cout << "score: " << score << ", first click hitting\n";
+			}
+			else if(fabs(hits.note->hit_times[1] - music_time + real_song_offset) < valid_hit_time_delta && !holding) {
+				// release near the end
+				score += 50;
+				std::cout << "score: " << score << ", last click hitting\n";
+			}
+			else if(holding) {
+				// holding in between note
+				// TODO: fix the math on the next line
+				std::pair<float, float> coord = get_coords(hits.note->dir, hits.note->coord_begin + (music_time - hits.note->hit_times[0] + real_song_offset) * (hits.note->coord_end - hits.note->coord_begin) * note_approach_time / (hits.note->hit_times[1] - hits.note->hit_times[0]));
+				glm::mat4 inverse = hits.note->note_transforms[0]->make_world_to_local();
+				glm::vec4 start = inverse * glm::vec4(camera->transform->position, 1.0f);
+				// std::cout << coord.first << " " << coord.second << " " << music_time << " " << hits.note->hit_times[0] + real_song_offset << "\n";
+				glm::vec4 end = inverse * glm::vec4(coord.first, coord.second, border_depth, 1.0f);
+				float dist = glm::distance(start, end);
+				if(dist - 0.2 < hits.time && hits.time < dist + 0.2) {
+					score += 10;
+					std::cout << "score: " << score << ", still hitting\n";		
+				}
+				else {	
+					score -= 20;
+					std::cout << "score: " << score << ", missed hold\n";	
+				}
+				// std::cout << "dist: " << dist << ", time: " << hits.time << "\n";
+			}
 		}
 		else {
-			std::cout << "bad hit\n";
+			// valid hit time for single and burst
+			// std::cout << music_time << " " << hits.note->hit_times[0] + real_song_offset << "\n";
+			if(fabs(music_time - hits.note->hit_times[0] + real_song_offset) < valid_hit_time_delta) {
+				score += 100;
+				std::cout << "score: " << score << ", valid hit\n";
+				hit_note(hits.note);
+			}
+			else {
+				score -= 20;
+				std::cout << "score: " << score << ", bad hit\n";
+			}
 		}
 	}
 	else {
-		std::cout << "miss\n";
+		score -= 50;
+		std::cout << "score: " << score << ", miss\n";
 	}
 }
 
@@ -636,10 +706,11 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 		SDL_SetRelativeMouseMode(SDL_TRUE);
 		if (gameState != PLAYING) return true;
 		check_hit();
-	// 	hold = true;
-	// } else if (evt.type == SDL_MOUSBUTTONUP) {
-	// 	check_hit();
-	// 	hold = false;
+		holding = true;
+	} else if (evt.type == SDL_MOUSEBUTTONUP) {
+		if (gameState != PLAYING) return true;
+		holding = false;
+		check_hit();
 	} else if (evt.type == SDL_MOUSEMOTION) {
 		if (gameState != PLAYING) return true;
 		
@@ -658,7 +729,19 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 		cam.elevation /= 2.0f * 3.1415926f;
 		cam.elevation -= std::round(cam.elevation);
 		cam.elevation *= 2.0f * 3.1415926f;
-
+		//update camera aspect ratio for drawable:
+		camera->transform->rotation =
+			normalize(glm::angleAxis(cam.azimuth, glm::vec3(0.0f, 1.0f, 0.0f))
+			* glm::angleAxis(0.5f * 3.1415926f + -cam.elevation, glm::vec3(1.0f, 0.0f, 0.0f)))
+		;
+		camera->transform->scale = glm::vec3(1.0f);
+		if (holding) {
+			check_hit();
+		}
+		return true;
+	} else if (holding) {
+		if (gameState != PLAYING) return true;
+		check_hit();
 		return true;
 	}
 	return false;
@@ -681,12 +764,6 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 		return ret;
 	}();
 
-	//update camera aspect ratio for drawable:
-	camera->transform->rotation =
-		normalize(glm::angleAxis(cam.azimuth, glm::vec3(0.0f, 1.0f, 0.0f))
-		* glm::angleAxis(0.5f * 3.1415926f + -cam.elevation, glm::vec3(1.0f, 0.0f, 0.0f)))
-	;
-	camera->transform->scale = glm::vec3(1.0f);
 	camera->aspect = float(drawable_size.x) / float(drawable_size.y);
 
 	//set up light type and position for lit_color_texture_program:
