@@ -19,6 +19,8 @@
 #include <array>
 #include "glm/gtx/string_cast.hpp"
 
+static float constexpr EPS_F = 0.0000001f;
+
 GLuint main_meshes_for_lit_color_texture_program = 0;
 Load< MeshBuffer > main_meshes(LoadTagDefault, []() -> MeshBuffer const * {
 	MeshBuffer const *ret = new MeshBuffer(data_path("main.pnct"));
@@ -42,12 +44,20 @@ Load< Scene > main_scene(LoadTagDefault, []() -> Scene const * {
 	});
 });
 
+Load< Sound::Sample > note_hit(LoadTagDefault, []() -> Sound::Sample const * {
+	return new Sound::Sample(data_path("Note_hit.wav"));
+});
+
+Load< Sound::Sample > note_miss(LoadTagDefault, []() -> Sound::Sample const * {
+	return new Sound::Sample(data_path("Note_miss.wav"));
+});
+
 // would like to generalize this load_song function to take in string input and load string.wav file
 Load< Sound::Sample > load_song_tutorial(LoadTagDefault, []() -> Sound::Sample const * {
 	return new Sound::Sample(data_path("Tutorial.wav"));
 });
 
-PlayMode::PlayMode() : scene(*main_scene) {
+PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_sound(*note_miss) {
 	SDL_SetRelativeMouseMode(SDL_TRUE);
 
 	meshBuf = new MeshBuffer(data_path("main.pnct"));
@@ -349,7 +359,7 @@ void PlayMode::read_notes(std::string song_name) {
 
 void PlayMode::update_bg(float elapsed) {
 	assert(gameState == PLAYING);
-	
+
 	float note_speed = (border_depth - init_note_depth) / note_approach_time;
 	for (int i = 0; i < bg_transforms.size() - 1; i++) {
 		bg_transforms[i]->position.z = bg_transforms[i]->position.z + note_speed * elapsed;
@@ -385,6 +395,8 @@ void PlayMode::update_notes() {
 			if (note.isActive) {
 				if (music_time > note.hit_times[j] + valid_hit_time_delta + real_song_offset) {
 					// 'delete' the note
+					if (!note.beenHit) hit_note(nullptr, -1);
+
 					note.note_transforms[j]->scale = glm::vec3(0.0f, 0.0f, 0.0f);
 					note_start_idx += 1;
 
@@ -409,36 +421,11 @@ void PlayMode::update_notes() {
 							note.note_transforms[j]->scale = glm::vec3(0.1f, 0.1f, 0.1f);
 						}
 						note_end_idx += 1;
-					} else {
-						continue;
 					}
-				}
-				else {
-					note.note_transforms[j]->scale = glm::vec3(0.0f, 0.0f, 0.0f);
-					note_start_idx += 1;
-
-					if (note_start_idx == (int)notes.size()) game_over(true);
 				}
 			}
 		}
 	}
-}
-
-void PlayMode::hit_note(NoteInfo* note) {
-	// deactivate the note
-	note->beenHit = true;
-	note->isActive = false;
-
-	// TODO : fix this for hold
-	if(note->noteType == NoteType::HOLD) {
-		// at the moment, only one transform for hold
-
-	}
-	else {
-		note->note_transforms[0]->scale = glm::vec3(0.0f, 0.0f, 0.0f);
-	}
-	// increment score & health
-
 }
 
 // AABB hit from https://gamedev.stackexchange.com/questions/18436/most-efficient-aabb-vs-ray-collision-algorithms/18459#18459
@@ -484,6 +471,10 @@ bool PlayMode::bbox_intersect(glm::vec3 pos, glm::vec3 dir, glm::vec3 min, glm::
 HitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 	for (int i = note_start_idx; i < note_end_idx; i++) {
 		NoteInfo &note = notes[i];
+
+		// TODO : might want to revisit this as extension for HOLD notes
+		if (note.note_transforms[0]->scale == glm::vec3()) continue;
+
 		// single type
 		if (note.noteType == NoteType::SINGLE) {
 			// get transform
@@ -605,20 +596,67 @@ void PlayMode::check_hit() {
 		else {
 			// valid hit time for single and burst
 			// std::cout << music_time << " " << hits.note->hit_times[0] + real_song_offset << "\n";
-			if(fabs(music_time - hits.note->hit_times[0] + real_song_offset) < valid_hit_time_delta) {
-				score += 100;
-				std::cout << "score: " << score << ", valid hit\n";
-				hit_note(hits.note);
+			if(fabs(music_time - hits.note->hit_times[0] + real_song_offset) < valid_hit_time_delta / 2.0f) {
+				// good hit
+				hit_note(hits.note, 2);
+				std::cout << "score: " << score << ", good hit\n";
+			} else if (fabs(music_time - hits.note->hit_times[0] + real_song_offset) < valid_hit_time_delta) {
+				// ok hit
+				hit_note(hits.note, 1);
+				std::cout << "score: " << score << ", ok hit\n";
 			}
 			else {
-				score -= 20;
+				// bad hit
+				hit_note(hits.note, 0);
 				std::cout << "score: " << score << ", bad hit\n";
 			}
 		}
 	}
 	else {
-		score -= 50;
-		std::cout << "score: " << score << ", miss\n";
+		// miss
+	}
+}
+
+void PlayMode::hit_note(NoteInfo* note, int hit_status) {
+	if (hit_status == -1) {
+		health = std::max(0.0f, health - 0.1f);
+		combo = 0;
+		if (health < EPS_F) game_over(false);
+		return;
+	}
+
+	// deactivate the note
+	note->beenHit = true;
+
+	if (hit_status == 0) {
+		// bad hit, same as miss
+		Sound::play(note_miss_sound);
+		combo = 0;
+		health = std::max(0.0f, health - 0.1f);
+		if (health < EPS_F) game_over(false);
+	} else if (hit_status == 1) {
+		// ok hit
+		Sound::play(note_hit_sound);
+		score += 50;
+		combo += 1;
+		multiplier = combo / 25 + 1;
+		health = std::min(maxHealth, health + 0.03f);
+	} else if (hit_status == 2) {
+		// good hit
+		Sound::play(note_hit_sound);
+		score += 100;
+		combo += 1;
+		multiplier = combo / 25 + 1;
+		health = std::min(maxHealth, health + 0.03f);
+	}
+
+	// TODO : fix this for hold
+	if(note->noteType == NoteType::HOLD) {
+		// at the moment, only one transform for hold
+
+	}
+	else {
+		note->note_transforms[0]->scale = glm::vec3(0.0f, 0.0f, 0.0f);
 	}
 }
 
@@ -658,6 +696,10 @@ void PlayMode::start_song(int idx, bool restart) {
 
 	note_start_idx = 0;
 	note_end_idx = 0;
+	score = 0;
+	combo = 0;
+	multiplier = 1;
+	health = 0.7f;
 
 	has_started = true;
 	gameState = PLAYING;
@@ -696,6 +738,7 @@ void PlayMode::unpause_song() {
 }
 
 void PlayMode::game_over(bool didClear) {
+	gameState = GAMEOVER;
 	if (didClear) {
 		std::cout << "song cleared!\n";
 	} else {
