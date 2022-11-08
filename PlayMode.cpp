@@ -57,7 +57,7 @@ PlayMode::PlayMode() : scene(*main_scene) {
 	camera = &scene.cameras.front();
 
 	std::vector<Drawable> default_skin(15);
-	float const bgscale = abs(init_note_depth - max_depth);
+	std::vector<Drawable> backgrounds(9);
 
 	for (auto &d : scene.drawables) {
 		if (d.transform->name.find("Note") != std::string::npos) {
@@ -76,39 +76,41 @@ PlayMode::PlayMode() : scene(*main_scene) {
 			border_drawable.start = d.pipeline.start;
 			border_drawable.count = d.pipeline.count;
 		} else if (d.transform->name == "BGCenter") {
-			d.transform->position = glm::vec3(0, 0, init_note_depth + 5.0f);
+			backgrounds[8].type = d.pipeline.type;
+			backgrounds[8].start = d.pipeline.start;
+			backgrounds[8].count = d.pipeline.count;
 		} else if (d.transform->name == "BGUp") {
-			d.transform->position = glm::vec3(0, y_scale, bgscale / 2.0f);
-			d.transform->scale = glm::vec3(bgscale, bgscale, 1);
-			backgrounds.emplace_back(&d);
+			backgrounds[0].type = d.pipeline.type;
+			backgrounds[0].start = d.pipeline.start;
+			backgrounds[0].count = d.pipeline.count;
 		} else if (d.transform->name == "BGUp2") {
-			d.transform->position = glm::vec3(0, y_scale, init_note_depth);
-			d.transform->scale = glm::vec3(bgscale, bgscale, 1);
-			backgrounds.emplace_back(&d);
+			backgrounds[1].type = d.pipeline.type;
+			backgrounds[1].start = d.pipeline.start;
+			backgrounds[1].count = d.pipeline.count;
 		} else if (d.transform->name == "BGDown") {
-			d.transform->position = glm::vec3(0, -y_scale, bgscale / 2.0f);
-			d.transform->scale = glm::vec3(bgscale, bgscale, 1);
-			backgrounds.emplace_back(&d);
+			backgrounds[2].type = d.pipeline.type;
+			backgrounds[2].start = d.pipeline.start;
+			backgrounds[2].count = d.pipeline.count;
 		} else if (d.transform->name == "BGDown2") {
-			d.transform->position = glm::vec3(0, -y_scale, init_note_depth);
-			d.transform->scale = glm::vec3(bgscale, bgscale, 1);
-			backgrounds.emplace_back(&d);
+			backgrounds[3].type = d.pipeline.type;
+			backgrounds[3].start = d.pipeline.start;
+			backgrounds[3].count = d.pipeline.count;
 		} else if (d.transform->name == "BGLeft") {
-			d.transform->position = glm::vec3(-x_scale, 0, bgscale / 2.0f);
-			d.transform->scale = glm::vec3(bgscale, 1, bgscale);
-			backgrounds.emplace_back(&d);
+			backgrounds[4].type = d.pipeline.type;
+			backgrounds[4].start = d.pipeline.start;
+			backgrounds[4].count = d.pipeline.count;
 		} else if (d.transform->name == "BGLeft2") {
-			d.transform->position = glm::vec3(-x_scale, 0, init_note_depth);
-			d.transform->scale = glm::vec3(bgscale, 1, bgscale);
-			backgrounds.emplace_back(&d);
+			backgrounds[5].type = d.pipeline.type;
+			backgrounds[5].start = d.pipeline.start;
+			backgrounds[5].count = d.pipeline.count;
 		} else if (d.transform->name == "BGRight") {
-			d.transform->position = glm::vec3(x_scale, 0, bgscale / 2.0f);
-			d.transform->scale = glm::vec3(bgscale, 1, bgscale);
-			backgrounds.emplace_back(&d);
+			backgrounds[6].type = d.pipeline.type;
+			backgrounds[6].start = d.pipeline.start;
+			backgrounds[6].count = d.pipeline.count;
 		} else if (d.transform->name == "BGRight2") {
-			d.transform->position = glm::vec3(x_scale, 0, init_note_depth);
-			d.transform->scale = glm::vec3(bgscale, 1, bgscale);
-			backgrounds.emplace_back(&d);
+			backgrounds[7].type = d.pipeline.type;
+			backgrounds[7].start = d.pipeline.start;
+			backgrounds[7].count = d.pipeline.count;
 		}
 	}
 
@@ -142,6 +144,58 @@ PlayMode::PlayMode() : scene(*main_scene) {
 		d2.pipeline.type = border_drawable.type;
 		d2.pipeline.start = border_drawable.start;
 		d2.pipeline.count = border_drawable.count;
+
+		bg_transforms.resize(9);
+		bgscale = abs(init_note_depth - max_depth);
+
+		for (int i = 0; i < 9; i++) {
+			bg_transforms[i] = new Scene::Transform;
+			switch (i) {
+				case 0: // Up
+					bg_transforms[i]->position = glm::vec3(0, 2.0f * y_scale, 0);
+					bg_transforms[i]->scale = glm::vec3(bgscale, 1, bgscale);
+					break;
+				case 1:
+					bg_transforms[i]->position = glm::vec3(0, 2.0f * y_scale, -2.0f * bgscale);
+					bg_transforms[i]->scale = glm::vec3(bgscale, 1, bgscale);
+					break;
+				case 2: // Down
+					bg_transforms[i]->position = glm::vec3(0, -2.0f * y_scale, 0);
+					bg_transforms[i]->scale = glm::vec3(bgscale, 1, bgscale);
+					break;
+				case 3:
+					bg_transforms[i]->position = glm::vec3(0, -2.0f * y_scale, -2.0f * bgscale);
+					bg_transforms[i]->scale = glm::vec3(bgscale, 1, bgscale);
+					break;
+				case 4: // Left
+					bg_transforms[i]->position = glm::vec3(-2.0f * x_scale, 0, 0);
+					bg_transforms[i]->scale = glm::vec3(1, bgscale, bgscale);
+					break;
+				case 5:
+					bg_transforms[i]->position = glm::vec3(-2.0f * x_scale, 0, -2.0f * bgscale);
+					bg_transforms[i]->scale = glm::vec3(1, bgscale, bgscale);
+					break;
+				case 6: // Right
+					bg_transforms[i]->position = glm::vec3(2.0f * x_scale, 0, 0);
+					bg_transforms[i]->scale = glm::vec3(1, bgscale, bgscale);
+					break;
+				case 7:
+					bg_transforms[i]->position = glm::vec3(2.0f * x_scale, 0, -2.0f * bgscale);
+					bg_transforms[i]->scale = glm::vec3(1, bgscale, bgscale);
+					break;
+				case 8: // Center
+					bg_transforms[i]->position = glm::vec3(0, 0, -bgscale);
+					bg_transforms[i]->scale = glm::vec3(bgscale, bgscale, 1);
+					break;
+			}
+			scene.drawables.emplace_back(bg_transforms[i]);
+			Scene::Drawable &d_bg = scene.drawables.back();
+			d_bg.pipeline = lit_color_texture_program_pipeline;
+			d_bg.pipeline.vao = main_meshes_for_lit_color_texture_program;
+			d_bg.pipeline.type = backgrounds[i].type;
+			d_bg.pipeline.start = backgrounds[i].start;
+			d_bg.pipeline.count = backgrounds[i].count;
+		}
 
 		// would be nice to count the number of songs / know their names by reading through the file system
 		// all tutorial songs for testing purposes for now
@@ -295,14 +349,13 @@ void PlayMode::read_notes(std::string song_name) {
 
 void PlayMode::update_bg(float elapsed) {
 	assert(gameState == PLAYING);
-	// printf("%f", elapsed);
-	// std::cout << " wat" << std::endl;
-
-	// float note_speed = (border_depth - init_note_depth) / note_approach_time;
-	// for (int i = 0; i < backgrounds.size(); i++) {
-	// 	backgrounds[i]->transform->position.z = backgrounds[i]->transform->position.z + note_speed * elapsed;
-	// 	if (backgrounds[i]->transform->position.z > 25.0f) backgrounds[i]->transform->position.z = init_note_depth;
-	// }
+	
+	float note_speed = (border_depth - init_note_depth) / note_approach_time;
+	for (int i = 0; i < bg_transforms.size() - 1; i++) {
+		bg_transforms[i]->position.z = bg_transforms[i]->position.z + note_speed * elapsed;
+		if (bg_transforms[i]->position.z > 2.0f * bgscale) 
+			bg_transforms[i]->position.z = -2.0f * bgscale;
+	}
 
 }
 

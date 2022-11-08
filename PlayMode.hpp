@@ -105,7 +105,7 @@ struct PlayMode : Mode {
 	Scene::Camera *camera = nullptr;
 
 	// background scrolling
-	std::vector<Scene::Drawable *> backgrounds;
+	std::vector<Scene::Transform *> bg_transforms;
 
 	// assets
 	// TODO : edit so that gun and border_drawable's are not drawn in menu
@@ -151,6 +151,8 @@ struct PlayMode : Mode {
 	float note_approach_time = 4.0f; // time between when the note shows up and hit time
 	float valid_hit_time_delta = 0.3f;
 	float real_song_offset = 0.075f;
+
+	float bgscale;
 
 	float mouse_sens = 0.4f;
 	float const mouse_sens_min = 0.1f;
