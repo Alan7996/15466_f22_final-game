@@ -534,11 +534,11 @@ void PlayMode::check_hit() {
 				// TODO: fix the math on the next line
 				std::pair<float, float> coord = get_coords(hits.note->dir, hits.note->coord_begin + (music_time - hits.note->hit_times[0] + real_song_offset) * (hits.note->coord_end - hits.note->coord_begin) * note_approach_time / (hits.note->hit_times[1] - hits.note->hit_times[0]));
 				glm::mat4 inverse = hits.note->note_transforms[0]->make_world_to_local();
-				glm::vec4 start = inverse * glm::vec4(camera->transform->position, 1.0f);
+				glm::vec3 start = glm::vec3(inverse * glm::vec4(camera->transform->position, 1.0f));
 				// std::cout << coord.first << " " << coord.second << " " << music_time << " " << hits.note->hit_times[0] + real_song_offset << "\n";
-				glm::vec4 end = inverse * glm::vec4(coord.first, coord.second, border_depth, 1.0f);
+				glm::vec3 end = glm::vec3(inverse * glm::vec4(coord.first, coord.second, border_depth, 1.0f));
 				float dist = glm::distance(start, end);
-				if(dist - 0.2 < hits.time && hits.time < dist + 0.2) {
+				if(dist - 2 < hits.time && hits.time < dist + 2) {
 					score += 10;
 					std::cout << "score: " << score << ", still hitting\n";		
 				}
