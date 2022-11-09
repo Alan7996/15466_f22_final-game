@@ -208,6 +208,7 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 		health_transform = new Scene::Transform;
 		health_transform->name = "Health";
 		health_transform->parent = healthbar_transform;
+		health_transform->scale.x = health / max_health;
 		scene.drawables.emplace_back(health_transform);
 		Scene::Drawable &d0 = scene.drawables.back();
 		d0.pipeline = lit_color_texture_program_pipeline;
@@ -665,6 +666,8 @@ void PlayMode::hit_note(NoteInfo* note, int hit_status) {
 		health = std::max(0.0f, health - 0.1f);
 		combo = 0;
 		multiplier = 1;
+		// update health bar
+		health_transform->scale.x = health / max_health;
 		if (health < EPS_F) game_over(false);
 		return;
 	}
@@ -735,6 +738,9 @@ void PlayMode::hit_note(NoteInfo* note, int hit_status) {
 	else {
 		note->note_transforms[0]->scale = glm::vec3(0.0f, 0.0f, 0.0f);
 	}
+
+	// update health bar
+	health_transform->scale.x = health / max_health;
 }
 
 /*
@@ -885,6 +891,7 @@ void PlayMode::start_song(int idx, bool restart) {
 	combo = 0;
 	multiplier = 1;
 	health = 0.7f;
+	health_transform->scale.x = health / max_health;
 
 	change_gun(0, 0);
 
