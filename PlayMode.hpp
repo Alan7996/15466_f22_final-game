@@ -128,7 +128,7 @@ struct PlayMode : Mode {
 	std::vector<Drawable> gun_drawables;
 	std::vector<Scene::Transform *> gun_transforms;
 	glm::vec3 const gun_scale = glm::vec3(0.01f, 0.01f, 0.1f);
-	int gun_mode = 0;
+	int gun_mode = 0; // 0 = single, 1 = burst, 2 = hold
 
 	// border information
 	Drawable border_drawable;

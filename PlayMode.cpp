@@ -650,6 +650,7 @@ void PlayMode::hit_note(NoteInfo* note, int hit_status) {
 	if (hit_status == -1) {
 		health = std::max(0.0f, health - 0.1f);
 		combo = 0;
+		multiplier = 1;
 		if (health < EPS_F) game_over(false);
 		return;
 	}
@@ -657,26 +658,59 @@ void PlayMode::hit_note(NoteInfo* note, int hit_status) {
 	// deactivate the note
 	note->been_hit = true;
 
-	if (hit_status == 0) {
-		// bad hit, same as miss
-		Sound::play(note_miss_sound);
-		combo = 0;
-		health = std::max(0.0f, health - 0.1f);
-		if (health < EPS_F) game_over(false);
-	} else if (hit_status == 1) {
-		// ok hit
-		Sound::play(note_hit_sound);
-		score += 50;
-		combo += 1;
-		multiplier = combo / 25 + 1;
-		health = std::min(max_health, health + 0.03f);
-	} else if (hit_status == 2) {
-		// good hit
-		Sound::play(note_hit_sound);
-		score += 100;
-		combo += 1;
-		multiplier = combo / 25 + 1;
-		health = std::min(max_health, health + 0.03f);
+	switch (hit_status) {
+		case 0:
+			// bad hit, same as miss
+			Sound::play(note_miss_sound);
+			combo = 0;
+			multiplier = 1;
+			health = std::max(0.0f, health - 0.1f);
+			if (health < EPS_F) game_over(false);
+			break;
+		case 1:
+			// ok hit
+			Sound::play(note_hit_sound);
+			score += 50;
+			combo += 1;
+			multiplier = combo / 25 + 1;
+			health = std::min(max_health, health + 0.03f);
+			break;
+		case 2:
+			// good hit
+			Sound::play(note_hit_sound);
+			score += 100;
+			combo += 1;
+			multiplier = combo / 25 + 1;
+			health = std::min(max_health, health + 0.03f);
+			break;
+		case 3:
+			// wrong gun hit
+			Sound::play(note_miss_sound);
+			score += 10;
+			combo = 0;
+			multiplier = 1;
+			break;
+		case 4:
+			// hold begin and end
+			Sound::play(note_hit_sound);
+			score += 50;
+			combo += 1;
+			multiplier = combo / 25 + 1;
+			health = std::min(max_health, health + 0.03f);
+			break;
+		case 5:
+			// hold during success
+			score += 10;
+			combo += 1;
+			multiplier = combo / 25 + 1;
+			health = std::min(max_health, health + 0.003f);
+			break;
+		case 6:
+			// hold during fail
+			combo = 0;
+			multiplier = 1;
+			health = std::max(0.0f, health - 0.003f);
+			break;
 	}
 
 	// TODO: fix this for hold
@@ -709,12 +743,12 @@ void PlayMode::check_hit() {
 			// only considers first 0.2 seconds of the hold -> need to change
 			if(fabs(music_time - hits.note->hit_times[0] + real_song_offset) < valid_hit_time_delta && !holding) {
 				// initial click
-				score += 50;
+				hit_note(hits.note, 4);
 				std::cout << "score: " << score << ", first click hitting\n";
 			}
 			else if(fabs(hits.note->hit_times[1] - music_time + real_song_offset) < valid_hit_time_delta && !holding) {
 				// release near the end
-				score += 50;
+				hit_note(hits.note, 4);
 				std::cout << "score: " << score << ", last click hitting\n";
 			}
 			else if(holding) {
@@ -727,11 +761,11 @@ void PlayMode::check_hit() {
 				glm::vec3 end = glm::vec3(inverse * glm::vec4(coord.x, coord.y, border_depth, 1.0f));
 				float dist = glm::distance(start, end);
 				if(dist - 2 < hits.time && hits.time < dist + 2) {
-					score += 10;
+					hit_note(hits.note, 5);
 					std::cout << "score: " << score << ", still hitting\n";		
 				}
 				else {	
-					score -= 20;
+					hit_note(hits.note, 6);
 					std::cout << "score: " << score << ", missed hold\n";	
 				}
 				// std::cout << "dist: " << dist << ", time: " << hits.time << "\n";
@@ -742,17 +776,22 @@ void PlayMode::check_hit() {
 			// std::cout << music_time << " " << hits.note->hit_times[0] + real_song_offset << "\n";
 			if(fabs(music_time - hits.note->hit_times[0] + real_song_offset) < valid_hit_time_delta / 2.0f) {
 				// good hit
-				hit_note(hits.note, 2);
-				std::cout << "score: " << score << ", good hit\n";
+				if ((gun_mode == 0 && hits.note->noteType == NoteType::SINGLE) || (gun_mode == 1 && hits.note->noteType == NoteType::BURST)){
+					hit_note(hits.note, 2);
+				} else {
+					hit_note(hits.note, 3);
+				}
 			} else if (fabs(music_time - hits.note->hit_times[0] + real_song_offset) < valid_hit_time_delta) {
 				// ok hit
-				hit_note(hits.note, 1);
-				std::cout << "score: " << score << ", ok hit\n";
+				if ((gun_mode == 0 && hits.note->noteType == NoteType::SINGLE) || (gun_mode == 1 && hits.note->noteType == NoteType::BURST)){
+					hit_note(hits.note, 1);
+				} else {
+					hit_note(hits.note, 3);
+				}
 			}
 			else {
 				// bad hit
 				hit_note(hits.note, 0);
-				std::cout << "score: " << score << ", bad hit\n";
 			}
 		}
 	}
@@ -796,7 +835,6 @@ void PlayMode::reset_song() {
 		}
 	}
 }
-
 
 /*
 	Function that changes the game state to the default menu
@@ -1103,6 +1141,14 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 			}
 			lines.draw_text(std::to_string(score),
 				glm::vec3(aspect - 0.3f - ofs, 0.8f, 0.0f),
+				glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+				glm::u8vec4(0xff, 0xff, 0xff, 0x00));
+
+			std::string gun_mode_text = "SINGLE";
+			if (gun_mode == 1) gun_mode_text = "BURST";
+			else if (gun_mode == 2) gun_mode_text = "HOLD";
+			lines.draw_text(gun_mode_text,
+				glm::vec3(-aspect + 0.3f + ofs, 0.8f, 0.0f),
 				glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 				glm::u8vec4(0xff, 0xff, 0xff, 0x00));
 		} else if (game_state == PAUSED) {
