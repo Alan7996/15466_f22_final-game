@@ -327,8 +327,7 @@ void tokenize(std::string const &str, const char* delim, std::vector<std::string
 	Helper function that returns the coordinates on the border given a direction and a value
 		Dir is a string representing a direction
 		Coord should range from -1 to 1, going from left to right and bottom to top.
-*/ 
-
+*/
 glm::vec2 PlayMode::get_coords(std::string dir, float coord) {
 	float x = 0.0f;
 	float y = 0.0f;
@@ -663,6 +662,7 @@ HitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 */
 void PlayMode::hit_note(NoteInfo* note, int hit_status) {
 	if (hit_status == -1) {
+		Sound::play(note_miss_sound);
 		health = std::max(0.0f, health - 0.1f);
 		combo = 0;
 		multiplier = 1;
@@ -920,26 +920,25 @@ void PlayMode::restart_song() {
 /*
 	Function that pauses the game
 		pause_song should only be called when going from PLAYING -> PAUSED
-
-	// TODO : need to actually figure out how to pause song
 */
 void PlayMode::pause_song() {
 	game_state = PAUSED;
 	hovering_text = 0;
 	music_pause_time = std::chrono::high_resolution_clock::now();
+	active_song->pause(true);
 }
 
 /*
 	Function that unpauses the game
 		unpause_song should only be called when going from PLAYING -> PAUSED -> select RESUME
-
-	// TODO : need to actually figure out how to unpause song
 */
 void PlayMode::unpause_song() {
 	game_state = PLAYING;
 	SDL_SetRelativeMouseMode(SDL_TRUE);
+	// TO CONSIDER : std::chrono's time may run slightly differently from SDL's audio timestamp. might want to compensate for this
 	auto current_time = std::chrono::high_resolution_clock::now();
 	music_start_time += current_time - music_pause_time;
+	active_song->pause(false);
 }
 
 /*

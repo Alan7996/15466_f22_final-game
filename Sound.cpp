@@ -191,6 +191,20 @@ void Sound::PlayingSample::stop(float ramp) {
 	Sound::unlock();
 }
 
+// TO DO : may want to change pause to also store index to the paused sample
+// 			so that we can make a ramp for stopping sound over time as well
+void Sound::PlayingSample::pause(bool stop) {
+	Sound::lock();
+	paused = stop;
+	if (stop) {
+		volume_stored = volume.value;
+		set_volume(0.0f, 0.0f);
+	} else {
+		set_volume(volume_stored, 0.1f);
+	}
+	Sound::unlock();
+}
+
 //------------------
 
 void Sound::Listener::set_position_right(glm::vec3 const &new_position, glm::vec3 const &new_right, float ramp) {
@@ -345,6 +359,11 @@ void mix_audio(void *, Uint8 *buffer_, int len) {
 	for (auto si = playing_samples.begin(); si != playing_samples.end(); /* later */) {
 		Sound::PlayingSample &playing_sample = **si; //much more convenient than writing ** everywhere.
 
+		if (playing_sample.paused) {
+			++si;
+			continue;
+		}
+
 		//Figure out sample panning/volume at start...
 		LR start_pan;
 		if (!(playing_sample.pan.value == playing_sample.pan.value)) {
@@ -367,6 +386,7 @@ void mix_audio(void *, Uint8 *buffer_, int len) {
 		start_pan.r *= start_volume * playing_sample.volume.value;
 
 		step_value_ramp(playing_sample.volume);
+		std::cout << std::to_string(playing_sample.volume.value) << std::endl;
 
 		//..and end of the mix period:
 		LR end_pan;
