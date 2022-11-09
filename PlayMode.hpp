@@ -124,11 +124,20 @@ struct PlayMode : Mode {
 	// vector containing list of songs
 	std::vector< std::pair<std::string, Sound::Sample> > song_list;
 
+	// health bar
+	Drawable healthbar_drawable;
+	Scene::Transform *healthbar_transform = nullptr;
+	glm::vec3 const healthbar_position = glm::vec3(-2.0f, 0.8f, -6.0f); // TODO: change this
+	glm::vec3 const healthbar_scale = glm::vec3(0.5f, 0.5f, 0.5f);
+	Drawable health_drawable;
+	Scene::Transform *health_transform = nullptr;
+	glm::vec3 const health_position = glm::vec3(-2.0f, 0.8f, -6.0f); // TODO: change this
+	glm::vec3 const health_scale = glm::vec3(0.5f, 0.5f, 0.5f);
+
 	// gun information
 	Drawable gun_drawable;
-	Scene::Transform *gun_transform = nullptr;
 	std::vector<Scene::Transform *> gun_transforms;
-	glm::vec3 const gun_scale = glm::vec3(0.003f, 0.003f, 0.06f);
+	glm::vec3 const gun_scale = glm::vec3(0.02f, 0.02f, 0.05f);
 	int gun_mode = 0; // 0 = single, 1 = burst, 2 = hold
 
 	// border information

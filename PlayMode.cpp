@@ -124,6 +124,14 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 			border_drawable.type = d.pipeline.type;
 			border_drawable.start = d.pipeline.start;
 			border_drawable.count = d.pipeline.count;
+		} else if (d.transform->name == "HealthBar") {
+			healthbar_drawable.type = d.pipeline.type;
+			healthbar_drawable.start = d.pipeline.start;
+			healthbar_drawable.count = d.pipeline.count;
+		} else if (d.transform->name == "Health") {
+			health_drawable.type = d.pipeline.type;
+			health_drawable.start = d.pipeline.start;
+			health_drawable.count = d.pipeline.count;
 		} else if (d.transform->name == "BGCenter") {
 			backgrounds[8].type = d.pipeline.type;
 			backgrounds[8].start = d.pipeline.start;
@@ -167,21 +175,6 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 	scene.drawables.clear();
 
 	{ // initialize game state
-		// gun_transform = new Scene::Transform;
-		// gun_transform->name = "Gun";
-		// gun_transform->parent = camera->transform;
-		// // TODO: these numbers need tweaking once we finalize the gun model
-		// gun_transform->position = glm::vec3(0.05f, -0.06f, -0.2f);
-		// gun_transform->scale = gun_scale;
-		// gun_transform->rotation = glm::quat(0.0f, -0.5f, 1.0f, 0.1f);
-		// scene.drawables.emplace_back(gun_transform);
-		// Scene::Drawable &d1 = scene.drawables.back();
-		// d1.pipeline = lit_color_texture_program_pipeline;
-		// d1.pipeline.vao = main_meshes_for_lit_color_texture_program;
-		// d1.pipeline.type = gun_drawable.type;
-		// d1.pipeline.start = gun_drawable.start;
-		// d1.pipeline.count = gun_drawable.count;
-
 		gun_transforms.resize(3);
 		for (int i = 0; i < 3; i++) {
 			gun_transforms[i] = new Scene::Transform;
@@ -198,6 +191,30 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 			d_gun.pipeline.start = gun_drawables[i].start;
 			d_gun.pipeline.count = gun_drawables[i].count;
 		}
+
+		healthbar_transform = new Scene::Transform;
+		healthbar_transform->name = "Healthbar";
+		healthbar_transform->parent = camera->transform;
+		healthbar_transform->position = healthbar_position;
+		healthbar_transform->scale = healthbar_scale;
+		scene.drawables.emplace_back(healthbar_transform);
+		Scene::Drawable &d1 = scene.drawables.back();
+		d1.pipeline = lit_color_texture_program_pipeline;
+		d1.pipeline.vao = main_meshes_for_lit_color_texture_program;
+		d1.pipeline.type = healthbar_drawable.type;
+		d1.pipeline.start = healthbar_drawable.start;
+		d1.pipeline.count = healthbar_drawable.count;
+
+		health_transform = new Scene::Transform;
+		health_transform->name = "Health";
+		health_transform->parent = healthbar_transform;
+		scene.drawables.emplace_back(health_transform);
+		Scene::Drawable &d0 = scene.drawables.back();
+		d0.pipeline = lit_color_texture_program_pipeline;
+		d0.pipeline.vao = main_meshes_for_lit_color_texture_program;
+		d0.pipeline.type = health_drawable.type;
+		d0.pipeline.start = health_drawable.start;
+		d0.pipeline.count = health_drawable.count;
 
 		border_transform = new Scene::Transform;
 		border_transform->name = "Border";
@@ -364,15 +381,7 @@ void PlayMode::read_notes(std::string song_name) {
 			note.dir = dir;
 			// this requires a bit more thinking on how to handle hold notes
 
-			if (note_mesh_idx == 1) {
-				note.scale = glm::vec3(0.06f, 0.015f, 0.015f);
-			} else if (note_mesh_idx == 2) {
-				note.scale = glm::vec3(0.15f, 0.08f, 0.1f);
-			} else if (note_mesh_idx == 4) {
-				note.scale = glm::vec3(0.06f, 0.008f, 0.015f);
-			} else {
-				note.scale = glm::vec3(0.1f, 0.1f, 0.1f);
-			}
+			note.scale = glm::vec3(0.2f, 0.2f, 0.2f);
 
 			if (note_type == "hold") {
 				note.noteType = NoteType::HOLD;
