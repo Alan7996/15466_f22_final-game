@@ -65,7 +65,7 @@ struct PlayMode : Mode {
 	// update note visibility and position
 	void update_bg(float elapsed);
 	virtual void update_notes();
-	void hit_note(NoteInfo* note);
+	void hit_note(NoteInfo* note, int hit_status);
 
 	// cast a ray to detect collision with a mesh
 	bool bbox_intersect(glm::vec3 pos, glm::vec3 dir, glm::vec3 min, glm::vec3 max, float &t);
@@ -89,6 +89,7 @@ struct PlayMode : Mode {
 		PLAYING,
 		PAUSED,
 		MENU,
+		GAMEOVER,
 	} gameState;
 
 	// input tracking:
@@ -105,7 +106,7 @@ struct PlayMode : Mode {
 	Scene::Camera *camera = nullptr;
 
 	// background scrolling
-	std::vector<Scene::Drawable *> backgrounds;
+	std::vector<Scene::Transform *> bg_transforms;
 
 	// assets
 	// TODO : edit so that gun and border_drawable's are not drawn in menu
@@ -126,17 +127,23 @@ struct PlayMode : Mode {
 
 	std::vector< std::pair<std::string, Sound::Sample> > song_list;
 
-	// music
+	// music & SFX
 	bool has_started = false;
 	std::chrono::time_point<std::chrono::high_resolution_clock> music_start_time;
 	std::chrono::time_point<std::chrono::high_resolution_clock> music_pause_time;
 	std::shared_ptr< Sound::PlayingSample > active_song;
 
+	Sound::Sample note_hit_sound;
+	Sound::Sample note_miss_sound;
+
 	// gameplay
 	int note_start_idx = 0;
 	int note_end_idx = 0;
 	int score = 0;
-	float health = 0.0f;
+	int combo = 0;
+	int multiplier = 1;
+	float health = 0.7f;
+	float const maxHealth = 1.0f;
 
 	// UI
 	std::vector<std::string> option_texts {"RESUME", "RESTART", "EXIT"};
@@ -151,6 +158,8 @@ struct PlayMode : Mode {
 	float note_approach_time = 4.0f; // time between when the note shows up and hit time
 	float valid_hit_time_delta = 0.3f;
 	float real_song_offset = 0.075f;
+
+	float bgscale;
 
 	float mouse_sens = 0.4f;
 	float const mouse_sens_min = 0.1f;
