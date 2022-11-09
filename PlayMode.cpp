@@ -835,11 +835,13 @@ void PlayMode::unpause_song() {
 		Should be called when either health reaches zero or if note_start_idx is equal to the end of the vector 
 */
 void PlayMode::game_over(bool didClear) {
-	gameState = GAMEOVER;
+	hovering_text = 0;
 	if (didClear) {
 		std::cout << "song cleared!\n";
+		gameState = SONGCLEAR;
 	} else {
 		std::cout << "song failed!\n";
+		gameState = GAMEOVER;
 	}
 }
 
@@ -890,6 +892,22 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 				return true;
 			} else if (evt.key.keysym.sym == SDLK_DOWN) {
 				hovering_text = hovering_text == static_cast<uint8_t>(option_texts.size()) - 1? static_cast<uint8_t>(option_texts.size()) - 1: hovering_text + 1;
+				return true;
+			}if (evt.key.keysym.sym == SDLK_ESCAPE) {
+				SDL_SetRelativeMouseMode(SDL_FALSE);
+				unpause_song();
+				return true;
+			}
+		} else if (gameState == SONGCLEAR || gameState == GAMEOVER) {
+			if (evt.key.keysym.sym == SDLK_RETURN) {
+				if (hovering_text == 0) {restart_song(); return true;}
+				else if (hovering_text == 1) {to_menu(); return true;}
+			}
+			else if (evt.key.keysym.sym == SDLK_UP) {
+				hovering_text = hovering_text == 0 ? 0 : hovering_text - 1;
+				return true;
+			} else if (evt.key.keysym.sym == SDLK_DOWN) {
+				hovering_text = hovering_text == static_cast<uint8_t>(songover_texts.size()) - 1? static_cast<uint8_t>(songover_texts.size()) - 1: hovering_text + 1;
 				return true;
 			}if (evt.key.keysym.sym == SDLK_ESCAPE) {
 				SDL_SetRelativeMouseMode(SDL_FALSE);
@@ -970,7 +988,6 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 	camera->aspect = float(drawable_size.x) / float(drawable_size.y);
 
 	//set up light type and position for lit_color_texture_program:
-	// TODO: consider using the Light(s) in the scene to do this
 	glUseProgram(lit_color_texture_program->program);
 	glUniform1i(lit_color_texture_program->LIGHT_TYPE_int, 0);
 	glUniform3fv(lit_color_texture_program->LIGHT_LOCATION_vec3, 1, glm::value_ptr(camera->transform->position + glm::vec3(0.0f, 0.0f, 0.0f)));
@@ -979,11 +996,11 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 	glUseProgram(0);
 
 	glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
-	glClearDepth(1.0f); //1.0 is actually the default value to clear the depth buffer to, but FYI you can change it.
+	glClearDepth(1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	glEnable(GL_DEPTH_TEST);
-	glDepthFunc(GL_LESS); //this is the default depth comparison function, but FYI you can change it.
+	glDepthFunc(GL_LESS);
 
 	scene.draw(*camera);
 
@@ -997,21 +1014,9 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 			0.0f, 0.0f, 0.0f, 1.0f
 		));
 
-		constexpr float H = 0.09f;
-		lines.draw_text("Up/down to navigate; enter to select; LMB to shoot",
-			glm::vec3(-aspect + 0.1f * H, -1.0 + 0.1f * H, 0.0),
-			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
-			glm::u8vec4(0x00, 0x00, 0x00, 0x00));
-		float ofs = 2.0f / drawable_size.y;
-		lines.draw_text("Up/down to navigate; enter to select; LMB to shoot",
-			glm::vec3(-aspect + 0.1f * H + ofs, -1.0 + + 0.1f * H + ofs, 0.0),
-			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
-			glm::u8vec4(0xff, 0xff, 0xff, 0x00));
-
 		if (gameState == MENU) {
 			for (int i = hovering_text - 2; i < hovering_text + 3; i++) {
 				if (i < 0 || i >= (int)song_list.size()) continue;
-				// todo : these offsets need to be fixed...
 				std::string text = song_list[i].first;
 				if (i == hovering_text) {
 					text = "-> " + text;
@@ -1032,11 +1037,38 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 					);
 				}
 			}
+			lines.draw_text(std::to_string(score),
+				glm::vec3(aspect - 0.3f - ofs, 0.8f, 0.0f),
+				glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+				glm::u8vec4(0xff, 0xff, 0xff, 0x00));
 		} else if (gameState == PAUSED) {
 			for (int i = hovering_text - 2; i < hovering_text + 3; i++) {
 				if (i < 0 || i >= (int)option_texts.size()) continue;
-				// todo : these offsets need to be fixed...
 				std::string text = option_texts[i];
+				if (i == hovering_text) {
+					text = "-> " + text;
+				}
+				lines.draw_text(text, 
+					glm::vec3(-aspect + 0.3f + ofs, (hovering_text - i) * 0.2f, 0.0f),
+					glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+					glm::u8vec4(0xff, 0xff, 0xff, 0x00));
+			}
+		} else if (gameState == SONGCLEAR) {
+			for (int i = hovering_text - 2; i < hovering_text + 3; i++) {
+				if (i < 0 || i >= (int)songover_texts.size()) continue;
+				std::string text = songover_texts[i];
+				if (i == hovering_text) {
+					text = "-> " + text;
+				}
+				lines.draw_text(text, 
+					glm::vec3(-aspect + 0.3f + ofs, (hovering_text - i) * 0.2f, 0.0f),
+					glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+					glm::u8vec4(0xff, 0xff, 0xff, 0x00));
+			}
+		} else if (gameState == GAMEOVER) {
+			for (int i = hovering_text - 2; i < hovering_text + 3; i++) {
+				if (i < 0 || i >= (int)songover_texts.size()) continue;
+				std::string text = songover_texts[i];
 				if (i == hovering_text) {
 					text = "-> " + text;
 				}

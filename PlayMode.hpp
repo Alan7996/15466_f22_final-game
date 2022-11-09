@@ -91,6 +91,7 @@ struct PlayMode : Mode {
 		PLAYING,
 		PAUSED,
 		MENU,
+		SONGCLEAR,
 		GAMEOVER,
 	} gameState;
 
@@ -149,6 +150,7 @@ struct PlayMode : Mode {
 
 	// UI
 	std::vector<std::string> option_texts {"RESUME", "RESTART", "EXIT"};
+	std::vector<std::string> songover_texts {"RESTART", "EXIT"};
 	uint8_t hovering_text = 0;
 	int chosen_song = 0;
 
@@ -183,5 +185,11 @@ struct PlayMode : Mode {
 		cam.elevation = 3.1415926f / 2.0f;
 		cam.target = glm::vec3(0.0f);
 		cam.flip_x = false;
+
+		//update camera aspect ratio for drawable:
+		camera->transform->rotation =
+			normalize(glm::angleAxis(cam.azimuth, glm::vec3(0.0f, 1.0f, 0.0f))
+			* glm::angleAxis(0.5f * 3.1415926f + -cam.elevation, glm::vec3(1.0f, 0.0f, 0.0f)))
+		;
 	}
 };
