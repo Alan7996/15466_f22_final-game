@@ -72,6 +72,7 @@ struct PlayMode : Mode {
 	// update functions - background and notes
 	void update_bg(float elapsed);
 	void update_notes();
+	void set_health_bar();
 
 	// intersection functions to hit notes
 	bool bbox_intersect(glm::vec3 pos, glm::vec3 dir, glm::vec3 min, glm::vec3 max, float &t);
@@ -127,8 +128,12 @@ struct PlayMode : Mode {
 	// health bar
 	Drawable healthbar_drawable;
 	Scene::Transform *healthbar_transform = nullptr;
-	glm::vec3 const healthbar_position = glm::vec3(-0.75f, 0.75f, -4.8f); // TODO: change this
-	glm::vec3 const healthbar_scale = glm::vec3(0.5f, 0.5f, 0.5f);
+	Drawable healthbarleft_drawable;
+	Scene::Transform *healthbarleft_transform = nullptr;
+	Drawable healthbarright_drawable;
+	Scene::Transform *healthbarright_transform = nullptr;
+	glm::vec3 const healthbar_position = glm::vec3(-0.5f, 0.75f, -4.8f); // TODO: change this
+	glm::vec3 const healthbar_scale = glm::vec3(0.75f, 0.75f, 0.5f);
 	Drawable health_drawable;
 	Scene::Transform *health_transform = nullptr;
 
@@ -161,6 +166,8 @@ struct PlayMode : Mode {
 	int multiplier = 1;
 	float health = 0.7f;
 	float const max_health = 1.0f;
+	float const health_right_cutoff = 0.9f;
+	float const health_left_cutoff = 0.1f;
 
 	// UI
 	std::vector<std::string> option_texts {"RESUME", "RESTART", "EXIT"};

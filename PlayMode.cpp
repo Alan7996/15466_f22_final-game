@@ -128,6 +128,14 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 			healthbar_drawable.type = d.pipeline.type;
 			healthbar_drawable.start = d.pipeline.start;
 			healthbar_drawable.count = d.pipeline.count;
+		} else if (d.transform->name == "HealthBarLeft") {
+			healthbarleft_drawable.type = d.pipeline.type;
+			healthbarleft_drawable.start = d.pipeline.start;
+			healthbarleft_drawable.count = d.pipeline.count;
+		} else if (d.transform->name == "HealthBarRight") {
+			healthbarright_drawable.type = d.pipeline.type;
+			healthbarright_drawable.start = d.pipeline.start;
+			healthbarright_drawable.count = d.pipeline.count;
 		} else if (d.transform->name == "Health") {
 			health_drawable.type = d.pipeline.type;
 			health_drawable.start = d.pipeline.start;
@@ -205,10 +213,32 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 		d1.pipeline.start = healthbar_drawable.start;
 		d1.pipeline.count = healthbar_drawable.count;
 
+		healthbarleft_transform = new Scene::Transform;
+		healthbarleft_transform->name = "HealthbarLeft";
+		healthbarleft_transform->parent = healthbar_transform;
+		scene.drawables.emplace_back(healthbarleft_transform);
+		Scene::Drawable &d1l = scene.drawables.back();
+		d1l.pipeline = lit_color_texture_program_pipeline;
+		d1l.pipeline.vao = main_meshes_for_lit_color_texture_program;
+		d1l.pipeline.type = healthbarleft_drawable.type;
+		d1l.pipeline.start = healthbarleft_drawable.start;
+		d1l.pipeline.count = healthbarleft_drawable.count;
+
+		healthbarright_transform = new Scene::Transform;
+		healthbarright_transform->name = "HealthbarRight";
+		healthbarright_transform->parent = healthbar_transform;
+		scene.drawables.emplace_back(healthbarright_transform);
+		Scene::Drawable &d1r = scene.drawables.back();
+		d1r.pipeline = lit_color_texture_program_pipeline;
+		d1r.pipeline.vao = main_meshes_for_lit_color_texture_program;
+		d1r.pipeline.type = healthbarright_drawable.type;
+		d1r.pipeline.start = healthbarright_drawable.start;
+		d1r.pipeline.count = healthbarright_drawable.count;
+
 		health_transform = new Scene::Transform;
 		health_transform->name = "Health";
 		health_transform->parent = healthbar_transform;
-		health_transform->scale.x = health / max_health;
+		set_health_bar();
 		scene.drawables.emplace_back(health_transform);
 		Scene::Drawable &d0 = scene.drawables.back();
 		d0.pipeline = lit_color_texture_program_pipeline;
@@ -666,8 +696,7 @@ void PlayMode::hit_note(NoteInfo* note, int hit_status) {
 		health = std::max(0.0f, health - 0.1f);
 		combo = 0;
 		multiplier = 1;
-		// update health bar
-		health_transform->scale.x = health / max_health;
+		set_health_bar();
 		if (health < EPS_F) game_over(false);
 		return;
 	}
@@ -739,8 +768,7 @@ void PlayMode::hit_note(NoteInfo* note, int hit_status) {
 		note->note_transforms[0]->scale = glm::vec3(0.0f, 0.0f, 0.0f);
 	}
 
-	// update health bar
-	health_transform->scale.x = health / max_health;
+	set_health_bar();
 }
 
 /*
@@ -874,6 +902,22 @@ void PlayMode::to_menu() {
 	if (active_song) active_song->stop();
 }
 
+void PlayMode::set_health_bar() {
+	if (health >= health_right_cutoff) {
+		health_transform->scale.x = 1.0f;
+		healthbarleft_transform->scale = glm::vec3(1.0f, 1.0f, 1.0f);
+		healthbarright_transform->scale = glm::vec3(1.0f, 1.0f, 1.0f);
+	} else if (health >= health_left_cutoff) {
+		health_transform->scale.x = (health - health_left_cutoff) / (health_right_cutoff - health_left_cutoff);
+		healthbarleft_transform->scale = glm::vec3(1.0f, 1.0f, 1.0f);
+		healthbarright_transform->scale = glm::vec3(0.0f, 0.0f, 0.0f);
+	} else {
+		health_transform->scale.x = 0.0f;
+		healthbarleft_transform->scale = glm::vec3(0.0f, 0.0f, 0.0f);
+		healthbarright_transform->scale = glm::vec3(0.0f, 0.0f, 0.0f);
+	}
+}
+
 
 /*
 	Function that starts a song (and initializes all variables) when we choose to start a level
@@ -891,7 +935,7 @@ void PlayMode::start_song(int idx, bool restart) {
 	combo = 0;
 	multiplier = 1;
 	health = 0.7f;
-	health_transform->scale.x = health / max_health;
+	set_health_bar();
 
 	change_gun(0, 0);
 
