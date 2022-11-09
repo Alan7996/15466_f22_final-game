@@ -20,12 +20,14 @@
 #include "glm/gtx/string_cast.hpp"
 
 GLuint main_meshes_for_lit_color_texture_program = 0;
+// load in mesh data from main.pnct into meshbuffer and make the program
 Load< MeshBuffer > main_meshes(LoadTagDefault, []() -> MeshBuffer const * {
 	MeshBuffer const *ret = new MeshBuffer(data_path("main.pnct"));
 	main_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
 	return ret;
 });
 
+// load in the scene data from main.scene and set up drawables vector with everything in the scene
 Load< Scene > main_scene(LoadTagDefault, []() -> Scene const * {
 	return new Scene(data_path("main.scene"), [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name){
 		Mesh const &mesh = main_meshes->lookup(mesh_name);
@@ -42,10 +44,22 @@ Load< Scene > main_scene(LoadTagDefault, []() -> Scene const * {
 	});
 });
 
+// load in song to play from Tutorial.wav
 // would like to generalize this load_song function to take in string input and load string.wav file
 Load< Sound::Sample > load_song_tutorial(LoadTagDefault, []() -> Sound::Sample const * {
 	return new Sound::Sample(data_path("Tutorial.wav"));
 });
+
+/*
+Initialization of the game
+	This involves the following:
+ 		Set up the camera
+		Go through all the drawables objects and save the values necessary to create a new object for the future
+		Clear out the initial drawables vector so we have an empty scene
+		Initialize the gun we carry
+		Initialize the border where we will be hitting the notes
+		Initialize list of songs to play for each level (at the moment, only one)
+*/ 
 
 PlayMode::PlayMode() : scene(*main_scene) {
 	SDL_SetRelativeMouseMode(SDL_TRUE);
