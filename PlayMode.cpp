@@ -414,7 +414,7 @@ void PlayMode::update_bg(float elapsed) {
 	assert(gameState == PLAYING);
 
 	float note_speed = (border_depth - init_note_depth) / note_approach_time;
-	for (int i = 0; i < bg_transforms.size() - 1; i++) {
+	for (size_t i = 0; i < bg_transforms.size() - 1; i++) {
 		bg_transforms[i]->position.z = bg_transforms[i]->position.z + note_speed * elapsed;
 		if (bg_transforms[i]->position.z > 2.0f * bgscale) 
 			bg_transforms[i]->position.z = -2.0f * bgscale;
