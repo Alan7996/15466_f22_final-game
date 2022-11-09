@@ -1024,7 +1024,6 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 				return true;
 			}if (evt.key.keysym.sym == SDLK_ESCAPE) {
 				SDL_SetRelativeMouseMode(SDL_FALSE);
-				unpause_song();
 				return true;
 			}
 		}
@@ -1155,6 +1154,11 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 			}
 			lines.draw_text(std::to_string(score),
 				glm::vec3(aspect - 0.3f - ofs, 0.8f, 0.0f),
+				glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+				glm::u8vec4(0xff, 0xff, 0xff, 0x00));
+
+			lines.draw_text("x" + std::to_string(combo),
+				glm::vec3(aspect - 0.3f - ofs, 0.0f, 0.0f),
 				glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 				glm::u8vec4(0xff, 0xff, 0xff, 0x00));
 
