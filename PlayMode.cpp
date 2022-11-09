@@ -194,16 +194,13 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 			gun_transforms[i]->scale = glm::vec3();
 			gun_transforms[i]->rotation = glm::quat(0.0f, 0.0f, 1.0f, 0.0f);
 			scene.drawables.emplace_back(gun_transforms[i]);
+			// Scene::Drawable &d_gun = scene.drawables.back();
+			// d_gun.pipeline = lit_color_texture_program_pipeline;
+			// d_gun.pipeline.vao = main_meshes_for_lit_color_texture_program;
+			// d_gun.pipeline.type = gun_drawables[i].type;
+			// d_gun.pipeline.start = gun_drawables[i].start;
+			// d_gun.pipeline.count = gun_drawables[i].count;
 		}
-
-		// only draw SINGLE gun to start with
-		// scene.drawables.emplace_back(gun_transforms[0]);
-		// Scene::Drawable &d_gun = scene.drawables.back();
-		// d_gun.pipeline = lit_color_texture_program_pipeline;
-		// d_gun.pipeline.vao = main_meshes_for_lit_color_texture_program;
-		// d_gun.pipeline.type = gun_drawables[0].type;
-		// d_gun.pipeline.start = gun_drawables[0].start;
-		// d_gun.pipeline.count = gun_drawables[0].count;
 
 		border_transform = new Scene::Transform;
 		border_transform->name = "Border";
