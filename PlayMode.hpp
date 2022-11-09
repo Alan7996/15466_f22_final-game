@@ -60,7 +60,7 @@ struct PlayMode : Mode {
 	// if up/down, -y_scale <= coord <= y_scale
 	// if left/right, -x_scale <= coord <= x_scale
 	virtual void read_notes(std::string song_name);
-	virtual std::pair<float, float> get_coords(std::string dir, float coord);
+	virtual glm::vec2 get_coords(std::string dir, float coord);
 
 	// update note visibility and position
 	void update_bg(float elapsed);

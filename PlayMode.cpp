@@ -19,17 +19,24 @@
 #include <array>
 #include "glm/gtx/string_cast.hpp"
 
+// float representing a small epsilon
 static float constexpr EPS_F = 0.0000001f;
 
+// initialize the index to look up meshes info
 GLuint main_meshes_for_lit_color_texture_program = 0;
-// load in mesh data from main.pnct into meshbuffer and make the program
+
+/*
+	Load in mesh data from main.pnct into meshbuffer and make the program
+*/
 Load< MeshBuffer > main_meshes(LoadTagDefault, []() -> MeshBuffer const * {
 	MeshBuffer const *ret = new MeshBuffer(data_path("main.pnct"));
 	main_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
 	return ret;
 });
 
-// load in the scene data from main.scene and set up drawables vector with everything in the scene
+/*
+	Load in the scene data from main.scene and set up drawables vector with everything in the scene
+*/
 Load< Scene > main_scene(LoadTagDefault, []() -> Scene const * {
 	return new Scene(data_path("main.scene"), [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name){
 		Mesh const &mesh = main_meshes->lookup(mesh_name);
@@ -46,29 +53,40 @@ Load< Scene > main_scene(LoadTagDefault, []() -> Scene const * {
 	});
 });
 
-// load in song to play from Tutorial.wav
+/*
+	Load in song to play when we hit a note
+*/
 Load< Sound::Sample > note_hit(LoadTagDefault, []() -> Sound::Sample const * {
 	return new Sound::Sample(data_path("Note_hit.wav"));
 });
 
+/*
+	Load in song to play when we miss a note
+*/
 Load< Sound::Sample > note_miss(LoadTagDefault, []() -> Sound::Sample const * {
 	return new Sound::Sample(data_path("Note_miss.wav"));
 });
 
-// would like to generalize this load_song function to take in string input and load string.wav file
+/*
+	Load in song to play from Tutorial.wav
+	
+	// TODO: Would like to generalize this load_song function to take in string input and load string.wav file
+*/
 Load< Sound::Sample > load_song_tutorial(LoadTagDefault, []() -> Sound::Sample const * {
 	return new Sound::Sample(data_path("Tutorial.wav"));
 });
 
 /*
-Initialization of the game
-	This involves the following:
- 		Set up the camera
-		Go through all the drawables objects and save the values necessary to create a new object for the future
-		Clear out the initial drawables vector so we have an empty scene
-		Initialize the gun we carry
-		Initialize the border where we will be hitting the notes
-		Initialize list of songs to play for each level (at the moment, only one)
+	Constructor for PlayMode
+	Initialization of the game
+		This involves the following:
+			Set up the camera
+			Go through all the drawables objects and save the values necessary to create a new object for the future
+			Clear out the initial drawables vector so we have an empty scene
+			Initialize the gun we carry
+			Initialize the border where we will be hitting the notes
+			Initialize the background scrolling
+			Initialize list of songs to play for each level (at the moment, only one)
 */ 
 PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_sound(*note_miss) {
 	SDL_SetRelativeMouseMode(SDL_TRUE);
@@ -234,11 +252,16 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 	}
 }
 
+/*
+	Destructor for PlayMode
+*/
 PlayMode::~PlayMode() {
 }
 
-
-// https://java2blog.com/split-string-space-cpp/
+/*
+	Helper function that takes in a string and delimiter and returns a vector of strings formed by splitting by delimiter
+	Reference from https://java2blog.com/split-string-space-cpp/
+*/
 void tokenize(std::string const &str, const char* delim, std::vector<std::string> &out) {
 
 	char *next_token, *token;
@@ -257,7 +280,13 @@ void tokenize(std::string const &str, const char* delim, std::vector<std::string
     }
 }
 
-std::pair<float, float> PlayMode::get_coords(std::string dir, float coord) {
+/*
+	Helper function that returns the coordinates on the border given a direction and a value
+		Dir is a string representing a direction
+		Coord should range from -1 to 1, going from left to right and bottom to top.
+*/ 
+
+glm::vec2 PlayMode::get_coords(std::string dir, float coord) {
 	float x = 0.0f;
 	float y = 0.0f;
 	if (dir == "left") {
@@ -273,9 +302,19 @@ std::pair<float, float> PlayMode::get_coords(std::string dir, float coord) {
 		x = coord;
 		y = -y_scale;
 	} 
-	return std::make_pair(x, y);
+	return glm::vec2(x, y);
 }
 
+/*
+Reads a txt file representing a beatmap and fills in the proper data structures to correctly render on screen
+	Each line of the txt file represents one note (single, burst, hold)
+	In the format of <type> <skin number> <direction> <coord begin> <coord end> @ <time begin> <time end>
+	Constructs a NoteInfo for each line and pushes it into the vector of notes
+		*** Each line must have its time begin be less than the time begins of all lines after it ***
+
+
+	// TODO: instead of making one hold note with a bunch of transforms, maybe consider making a bunch of notes with one transform each?
+*/
 void PlayMode::read_notes(std::string song_name) {
 	notes.clear();
 
@@ -301,8 +340,6 @@ void PlayMode::read_notes(std::string song_name) {
 			// this requires a bit more thinking on how to handle hold notes
 
 			if (note_type == "hold") {
-				// TODO: instead of making one note with a bunch of transforms, maybe consider making a bunch of notes with one transform each?
-
 				note.noteType = NoteType::HOLD;
 
 				for (int i = 0; i < idx - 4; i++) {
@@ -313,22 +350,22 @@ void PlayMode::read_notes(std::string song_name) {
 					float time_end = std::stof(note_info[idx+1+i+1]);
 					note.coord_begin = coord_begin;
 					note.coord_end = coord_end;
-					std::pair<float, float> coords_begin = get_coords(dir, coord_begin);
-					std::pair<float, float> coords_end = get_coords(dir, coord_end);
+					glm::vec2 coords_begin = get_coords(dir, coord_begin);
+					glm::vec2 coords_end = get_coords(dir, coord_end);
 
 					Scene::Transform *transform = new Scene::Transform;
 					transform->name = "Note";
-					transform->position = glm::vec3((coords_begin.first + coords_end.first) / 2.0f, (coords_begin.second + coords_end.second) / 2.0f, init_note_depth);
+					transform->position = glm::vec3((coords_begin.x + coords_end.x) / 2.0f, (coords_begin.y + coords_end.y) / 2.0f, init_note_depth);
 					transform->scale = glm::vec3(0.0f, 0.0f, 0.0f); // all notes start from being invisible
 					float angle = 0.0f;
 					// if the xs are the same
-					if(coords_begin.first == coords_end.first) {
-						angle = -atan2((coords_begin.second - coords_end.second) / 2.0f, time_end - time_begin);
+					if(coords_begin.x == coords_end.x) {
+						angle = -atan2((coords_begin.y - coords_end.y) / 2.0f, time_end - time_begin);
 						transform->rotation = normalize(glm::angleAxis(angle, glm::vec3(1.0f, 0.0f, 0.0f)));
 					}
 					// otherwise the ys are the same
 					else {
-						angle = atan2((coords_begin.first - coords_end.first) / 2.0f, time_end - time_begin);
+						angle = atan2((coords_begin.x - coords_end.x) / 2.0f, time_end - time_begin);
 						transform->rotation = normalize(glm::angleAxis(angle, glm::vec3(0.0f, 1.0f, 0.0f)));
 					}
 
@@ -339,13 +376,13 @@ void PlayMode::read_notes(std::string song_name) {
 			} else {
 				float coord = std::stof(note_info[3]);
 				float time = std::stof(note_info[5]);
-				std::pair<float, float> coords = get_coords(dir, coord);
+				glm::vec2 coords = get_coords(dir, coord);
 				
 				note.noteType = note_type == "single" ? NoteType::SINGLE : NoteType::BURST;
 
 				Scene::Transform *transform = new Scene::Transform;
 				transform->name = "Note";
-				transform->position = glm::vec3(coords.first, coords.second, init_note_depth);
+				transform->position = glm::vec3(coords.x, coords.y, init_note_depth);
 				transform->scale = glm::vec3(0.0f, 0.0f, 0.0f); // all notes start from being invisible
 				transform->rotation = (dir == "left" || dir == "right") ? glm::quat(1.0f, 0.0f, 0.0f, 0.0f) : glm::quat(0.7071f, 0.0f, 0.0f, 0.7071f);
 
@@ -369,7 +406,10 @@ void PlayMode::read_notes(std::string song_name) {
 	}
 }
 
-
+/*
+	Helper function to create a scroll effect on the background
+	Switches between two backgrounds on each direction to create an effect of it being infinite
+*/
 void PlayMode::update_bg(float elapsed) {
 	assert(gameState == PLAYING);
 
@@ -382,18 +422,19 @@ void PlayMode::update_bg(float elapsed) {
 
 }
 
-/* We maintain the list of notes to be checked in the following way : 
- * We keep track of two types of variables. First are note_start_idx and 
- * note_end_idx, which records the range of notes that have spawned but have
- * yet to reach the disappearing line. Second are each note's isActive boolean,
- * which if a note was correctly hit by the player should toggle to false and
- * make the note have 0 scale. We however do not immediately update the indices,
- * meaning the note will continue to move towards the player until it reaches the
- * disappearing line. This is so that we can keep a nice loop from start to end
- * indices without worrying about tight time gaps between notes. 
- * 
- * Also note that we always loop up to ONE INDEX HIGHER than the end index, to
- * check if we should start the next note or not.
+/* 
+	We maintain the list of notes to be checked in the following way: 
+		We keep track of two types of variables. First are note_start_idx and 
+		note_end_idx, which records the range of notes that have spawned but have
+		yet to reach the disappearing line. Second are each note's isActive boolean,
+		which if a note was correctly hit by the player should toggle to false and
+		make the note have 0 scale. We however do not immediately update the indices,
+		meaning the note will continue to move towards the player until it reaches the
+		disappearing line. This is so that we can keep a nice loop from start to end
+		indices without worrying about tight time gaps between notes. 
+
+	Also note that we always loop up to ONE INDEX HIGHER than the end index, to
+	check if we should start the next note or not.
 */
 void PlayMode::update_notes() {
 	assert(gameState == PLAYING);
@@ -441,7 +482,10 @@ void PlayMode::update_notes() {
 	}
 }
 
-// AABB hit from https://gamedev.stackexchange.com/questions/18436/most-efficient-aabb-vs-ray-collision-algorithms/18459#18459
+/*
+	Helper function to run AABB intersection
+	Reference from https://gamedev.stackexchange.com/questions/18436/most-efficient-aabb-vs-ray-collision-algorithms/18459#18459
+*/
 bool PlayMode::bbox_intersect(glm::vec3 pos, glm::vec3 dir, glm::vec3 min, glm::vec3 max, float &t) 
 { 
 	// r.dir is unit direction vector of ray
@@ -479,7 +523,13 @@ bool PlayMode::bbox_intersect(glm::vec3 pos, glm::vec3 dir, glm::vec3 min, glm::
 	return true;
 }
 
-// attempt bounding box implementation
+/*
+	Helper function to trace a ray from pos in dir direction against every visible note
+		Transforms both pos and dir to note's local space in order to take care of OBB
+
+	// TODO: At the moment, uses the same code for all three types
+			 Need to consider what would actually be different between the three
+*/
 // currently using the same code three times, maybe think about what would actually be different between the three?
 HitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 	for (int i = note_start_idx; i < note_end_idx; i++) {
@@ -562,6 +612,56 @@ HitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 	return HitInfo();
 }
 
+/*
+	Update function to a note, score / combo and health
+*/
+void PlayMode::hit_note(NoteInfo* note, int hit_status) {
+	if (hit_status == -1) {
+		health = std::max(0.0f, health - 0.1f);
+		combo = 0;
+		if (health < EPS_F) game_over(false);
+		return;
+	}
+
+	// deactivate the note
+	note->beenHit = true;
+
+	if (hit_status == 0) {
+		// bad hit, same as miss
+		Sound::play(note_miss_sound);
+		combo = 0;
+		health = std::max(0.0f, health - 0.1f);
+		if (health < EPS_F) game_over(false);
+	} else if (hit_status == 1) {
+		// ok hit
+		Sound::play(note_hit_sound);
+		score += 50;
+		combo += 1;
+		multiplier = combo / 25 + 1;
+		health = std::min(maxHealth, health + 0.03f);
+	} else if (hit_status == 2) {
+		// good hit
+		Sound::play(note_hit_sound);
+		score += 100;
+		combo += 1;
+		multiplier = combo / 25 + 1;
+		health = std::min(maxHealth, health + 0.03f);
+	}
+
+	// TODO: fix this for hold
+	if(note->noteType == NoteType::HOLD) {
+		// at the moment, only one transform for hold
+
+	}
+	else {
+		note->note_transforms[0]->scale = glm::vec3(0.0f, 0.0f, 0.0f);
+	}
+}
+
+/*
+	Function called whenever we clickon the screen
+		Checks if we hit any note, see if the hit is valid or not and then calls hit note based on that
+*/
 void PlayMode::check_hit() {
 	// ray from camera position to origin (p1 - p2)
 	glm::vec3 ray = glm::vec3(0) - camera->transform->position;
@@ -589,11 +689,11 @@ void PlayMode::check_hit() {
 			else if(holding) {
 				// holding in between note
 				// TODO: fix the math on the next line
-				std::pair<float, float> coord = get_coords(hits.note->dir, hits.note->coord_begin + (music_time - hits.note->hit_times[0] + real_song_offset) * (hits.note->coord_end - hits.note->coord_begin) * note_approach_time / (hits.note->hit_times[1] - hits.note->hit_times[0]));
+				glm::vec2 coord = get_coords(hits.note->dir, hits.note->coord_begin + (music_time - hits.note->hit_times[0] + real_song_offset) * (hits.note->coord_end - hits.note->coord_begin) * note_approach_time / (hits.note->hit_times[1] - hits.note->hit_times[0]));
 				glm::mat4 inverse = hits.note->note_transforms[0]->make_world_to_local();
 				glm::vec3 start = glm::vec3(inverse * glm::vec4(camera->transform->position, 1.0f));
 				// std::cout << coord.first << " " << coord.second << " " << music_time << " " << hits.note->hit_times[0] + real_song_offset << "\n";
-				glm::vec3 end = glm::vec3(inverse * glm::vec4(coord.first, coord.second, border_depth, 1.0f));
+				glm::vec3 end = glm::vec3(inverse * glm::vec4(coord.x, coord.y, border_depth, 1.0f));
 				float dist = glm::distance(start, end);
 				if(dist - 2 < hits.time && hits.time < dist + 2) {
 					score += 10;
@@ -630,49 +730,9 @@ void PlayMode::check_hit() {
 	}
 }
 
-void PlayMode::hit_note(NoteInfo* note, int hit_status) {
-	if (hit_status == -1) {
-		health = std::max(0.0f, health - 0.1f);
-		combo = 0;
-		if (health < EPS_F) game_over(false);
-		return;
-	}
-
-	// deactivate the note
-	note->beenHit = true;
-
-	if (hit_status == 0) {
-		// bad hit, same as miss
-		Sound::play(note_miss_sound);
-		combo = 0;
-		health = std::max(0.0f, health - 0.1f);
-		if (health < EPS_F) game_over(false);
-	} else if (hit_status == 1) {
-		// ok hit
-		Sound::play(note_hit_sound);
-		score += 50;
-		combo += 1;
-		multiplier = combo / 25 + 1;
-		health = std::min(maxHealth, health + 0.03f);
-	} else if (hit_status == 2) {
-		// good hit
-		Sound::play(note_hit_sound);
-		score += 100;
-		combo += 1;
-		multiplier = combo / 25 + 1;
-		health = std::min(maxHealth, health + 0.03f);
-	}
-
-	// TODO : fix this for hold
-	if(note->noteType == NoteType::HOLD) {
-		// at the moment, only one transform for hold
-
-	}
-	else {
-		note->note_transforms[0]->scale = glm::vec3(0.0f, 0.0f, 0.0f);
-	}
-}
-
+/*
+	Helper function to resetting all note values to initial state when restarting a song
+*/
 void PlayMode::reset_song() {
 	// reset loaded assets
 	if (active_song) active_song->stop();
@@ -686,7 +746,12 @@ void PlayMode::reset_song() {
 	}
 }
 
-// to_menu should be called either when the game is launched or when going from PLAYING -> PAUSED -> select EXIT
+
+/*
+	Function that changes the game state to the default menu
+		to_menu should only be called either when the game is launched or when going from PLAYING -> PAUSED -> select EXIT
+
+*/
 void PlayMode::to_menu() {
 	// reset all state variables
 	has_started = false;
@@ -700,7 +765,11 @@ void PlayMode::to_menu() {
 	if (active_song) active_song->stop();
 }
 
-// start_song should only be called when going from MENU -> PLAYING or in restart_song
+
+/*
+	Function that starts a song (and initializes all variables) when we choose to start a level
+		start_song should only be called when going from MENU -> PLAYING or in restart_song
+*/
 void PlayMode::start_song(int idx, bool restart) {
 	if (has_started) return;
 
@@ -725,7 +794,10 @@ void PlayMode::start_song(int idx, bool restart) {
 	active_song = Sound::play(song_list[idx].second);
 }
 
-// restart_song should only be called when going from PLAYING -> PAUSED -> select RESTART
+/*
+	Function that restarts a song (and reinitializes all variables) when we choose to restart a level
+		restart_song should only be called when going from PLAYING -> PAUSED -> select RESTARTg
+*/
 void PlayMode::restart_song() {
 	reset_song();
 
@@ -733,23 +805,35 @@ void PlayMode::restart_song() {
 	start_song(chosen_song, true);
 }
 
-// pause_song should only be called when going from PLAYING -> PAUSED
-void PlayMode::pause_song() {
+/*
+	Function that pauses the game
+		pause_song should only be called when going from PLAYING -> PAUSED
+
 	// TODO : need to actually figure out how to pause song
+*/
+void PlayMode::pause_song() {
 	gameState = PAUSED;
 	hovering_text = 0;
 	music_pause_time = std::chrono::high_resolution_clock::now();
 }
 
-// unpause_song should only be called when going from PLAYING -> PAUSED -> select RESUME
-void PlayMode::unpause_song() {
+/*
+	Function that unpauses the game
+		unpause_song should only be called when going from PLAYING -> PAUSED -> select RESUME
+
 	// TODO : need to actually figure out how to unpause song
+*/
+void PlayMode::unpause_song() {
 	gameState = PLAYING;
 	SDL_SetRelativeMouseMode(SDL_TRUE);
 	auto current_time = std::chrono::high_resolution_clock::now();
 	music_start_time += current_time - music_pause_time;
 }
 
+/*
+	Function that ends the game and makes all events do nothing
+		Should be called when either health reaches zero or if note_start_idx is equal to the end of the vector 
+*/
 void PlayMode::game_over(bool didClear) {
 	gameState = GAMEOVER;
 	if (didClear) {
@@ -759,6 +843,9 @@ void PlayMode::game_over(bool didClear) {
 	}
 }
 
+/*
+	Function that handles a SDL event and cases on what to do as a result
+*/
 bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
 
 	if (evt.type == SDL_KEYDOWN) {
@@ -823,6 +910,7 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 	} else if (evt.type == SDL_MOUSEMOTION) {
 		if (gameState != PLAYING) return true;
 		
+		// From ShowSceneProgram.cpp
 		glm::vec2 delta;
 		delta.x = evt.motion.xrel / float(window_size.x) * 2.0f;
 		delta.x *= float(window_size.y) / float(window_size.x);
@@ -856,6 +944,9 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 	return false;
 }
 
+/*
+	Function to call the update functions on the background and notes
+*/
 void PlayMode::update(float elapsed) {
 	if (gameState == PLAYING) {
 		update_bg(elapsed);
@@ -863,6 +954,9 @@ void PlayMode::update(float elapsed) {
 	}
 }
 
+/*
+	Function to draw the scene
+*/
 void PlayMode::draw(glm::uvec2 const &drawable_size) {
 	static std::array< glm::vec2, 16 > const circle = [](){
 		std::array< glm::vec2, 16 > ret;
