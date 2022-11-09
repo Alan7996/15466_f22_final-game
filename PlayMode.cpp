@@ -20,16 +20,17 @@
 #include "glm/gtx/string_cast.hpp"
 
 static float constexpr EPS_F = 0.0000001f;
+const bool DEBUG = true;
 
 GLuint main_meshes_for_lit_color_texture_program = 0;
 Load< MeshBuffer > main_meshes(LoadTagDefault, []() -> MeshBuffer const * {
-	MeshBuffer const *ret = new MeshBuffer(data_path("main.pnct"));
+	MeshBuffer const *ret = new MeshBuffer(data_path("main2.pnct"));
 	main_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
 	return ret;
 });
 
 Load< Scene > main_scene(LoadTagDefault, []() -> Scene const * {
-	return new Scene(data_path("main.scene"), [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name){
+	return new Scene(data_path("main2.scene"), [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name){
 		Mesh const &mesh = main_meshes->lookup(mesh_name);
 
 		scene.drawables.emplace_back(transform);
@@ -77,7 +78,21 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 			default_skin[idx].type = d.pipeline.type;
 			default_skin[idx].start = d.pipeline.start;
 			default_skin[idx].count = d.pipeline.count;
-		} else if (d.transform->name == "Gun") {
+		} else if (d.transform->name == "Ghost") {
+			if (DEBUG) {
+				default_skin[0].type = d.pipeline.type;
+				default_skin[0].start = d.pipeline.start;
+				default_skin[0].count = d.pipeline.count;
+			}
+		}
+		else if (d.transform->name == "Pumpkin") {
+			if (DEBUG) {
+				default_skin[1].type = d.pipeline.type;
+				default_skin[1].start = d.pipeline.start;
+				default_skin[1].count = d.pipeline.count;
+			}
+		}
+		else if (d.transform->name == "Gun") {
 			gun_drawable.type = d.pipeline.type;
 			gun_drawable.start = d.pipeline.start;
 			gun_drawable.count = d.pipeline.count;
@@ -418,7 +433,12 @@ void PlayMode::update_notes() {
 							note.note_transforms[j]->position.z = init_note_depth - (note.hit_times[j+1] - note.hit_times[j]) / 2;
 						}
 						else {
-							note.note_transforms[j]->scale = glm::vec3(0.1f, 0.1f, 0.1f);
+							if (DEBUG) {
+								note.note_transforms[j]->scale = glm::vec3(0.2f, 0.06f, 0.1f);
+								note.note_transforms[j]->rotation = glm::quat(0.0f, -1.0f, 0.0f, 0.7f);
+							} else {
+								note.note_transforms[j]->scale = glm::vec3(0.1f, 0.1f, 0.1f);
+							}
 						}
 						note_end_idx += 1;
 					}
