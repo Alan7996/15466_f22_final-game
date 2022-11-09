@@ -327,8 +327,7 @@ void tokenize(std::string const &str, const char* delim, std::vector<std::string
 	Helper function that returns the coordinates on the border given a direction and a value
 		Dir is a string representing a direction
 		Coord should range from -1 to 1, going from left to right and bottom to top.
-*/ 
-
+*/
 glm::vec2 PlayMode::get_coords(std::string dir, float coord) {
 	float x = 0.0f;
 	float y = 0.0f;
@@ -936,6 +935,7 @@ void PlayMode::pause_song() {
 void PlayMode::unpause_song() {
 	game_state = PLAYING;
 	SDL_SetRelativeMouseMode(SDL_TRUE);
+	// TO CONSIDER : std::chrono's time may run slightly differently from SDL's audio timestamp. might want to compensate for this
 	auto current_time = std::chrono::high_resolution_clock::now();
 	music_start_time += current_time - music_pause_time;
 	active_song->pause(false);
