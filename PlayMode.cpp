@@ -663,6 +663,7 @@ HitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 */
 void PlayMode::hit_note(NoteInfo* note, int hit_status) {
 	if (hit_status == -1) {
+		Sound::play(note_miss_sound);
 		health = std::max(0.0f, health - 0.1f);
 		combo = 0;
 		multiplier = 1;
@@ -920,26 +921,24 @@ void PlayMode::restart_song() {
 /*
 	Function that pauses the game
 		pause_song should only be called when going from PLAYING -> PAUSED
-
-	// TODO : need to actually figure out how to pause song
 */
 void PlayMode::pause_song() {
 	game_state = PAUSED;
 	hovering_text = 0;
 	music_pause_time = std::chrono::high_resolution_clock::now();
+	active_song->pause(true);
 }
 
 /*
 	Function that unpauses the game
 		unpause_song should only be called when going from PLAYING -> PAUSED -> select RESUME
-
-	// TODO : need to actually figure out how to unpause song
 */
 void PlayMode::unpause_song() {
 	game_state = PLAYING;
 	SDL_SetRelativeMouseMode(SDL_TRUE);
 	auto current_time = std::chrono::high_resolution_clock::now();
 	music_start_time += current_time - music_pause_time;
+	active_song->pause(false);
 }
 
 /*

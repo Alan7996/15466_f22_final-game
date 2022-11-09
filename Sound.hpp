@@ -62,6 +62,7 @@ struct PlayingSample {
 
 	//'stop' will fade sample out over 'ramp' seconds and then remove it from the active samples:
 	void stop(float ramp = 1.0f / 60.0f);
+	void pause(bool stop);
 
 	//internals:
 	//NOTE: PlayingSample is used in a separate thread; so setting these values directly
@@ -71,6 +72,8 @@ struct PlayingSample {
 	bool loop = false; //should playback loop after data runs out?
 	bool stopping = false; //is playing stopping?
 	bool stopped = false; //was playback stopped (either by running out of sample, or by stop())?
+	bool paused = false;
+	float volume_stored = 1.0f;
 
 	Ramp< float > volume = Ramp< float >(1.0f);
 
