@@ -102,8 +102,7 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 
 	for (auto &d : scene.drawables) {
 		if (d.transform->name.find("Note") != std::string::npos) {
-			// set up default skin array
-			// change in future to support names >= 10
+			// set up default skin array, only support total 10 skin variations
 			int idx = d.transform->name.at(4) - '0';
 			default_skin[idx].type = d.pipeline.type;
 			default_skin[idx].start = d.pipeline.start;
@@ -112,6 +111,18 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 			gun_drawable.type = d.pipeline.type;
 			gun_drawable.start = d.pipeline.start;
 			gun_drawable.count = d.pipeline.count;
+		} else if (d.transform->name == "GunSingle") {
+			gun_drawables[0].type = d.pipeline.type;
+			gun_drawables[0].start = d.pipeline.start;
+			gun_drawables[0].count = d.pipeline.count;
+		} else if (d.transform->name == "GunBurst") {
+			gun_drawables[1].type = d.pipeline.type;
+			gun_drawables[1].start = d.pipeline.start;
+			gun_drawables[1].count = d.pipeline.count;
+		} else if (d.transform->name == "GunHold") {
+			gun_drawables[2].type = d.pipeline.type;
+			gun_drawables[2].start = d.pipeline.start;
+			gun_drawables[2].count = d.pipeline.count;
 		} else if (d.transform->name == "Border") {
 			border_drawable.type = d.pipeline.type;
 			border_drawable.start = d.pipeline.start;
@@ -164,7 +175,7 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 		gun_transform->parent = camera->transform;
 		// TODO: these numbers need tweaking once we finalize the gun model
 		gun_transform->position = glm::vec3(0.03f, -0.06f, -0.4f);
-		gun_transform->scale = glm::vec3(0.01f, 0.01f, 0.1f);
+		gun_transform->scale = gun_scale;
 		gun_transform->rotation = glm::quat(0.0f, 0.0f, 1.0f, 0.0f);
 		scene.drawables.emplace_back(gun_transform);
 		Scene::Drawable &d1 = scene.drawables.back();
@@ -173,6 +184,26 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 		d1.pipeline.type = gun_drawable.type;
 		d1.pipeline.start = gun_drawable.start;
 		d1.pipeline.count = gun_drawable.count;
+
+		gun_transforms.resize(3);
+		for (int i = 0; i < 3; i++) {
+			gun_transforms[i] = new Scene::Transform;
+			gun_transforms[i]->parent = camera->transform;
+			// TODO: these numbers need tweaking once we finalize the gun model
+			gun_transforms[i]->position = glm::vec3(0.03f, -0.06f, -0.4f);
+			gun_transforms[i]->scale = glm::vec3();
+			gun_transforms[i]->rotation = glm::quat(0.0f, 0.0f, 1.0f, 0.0f);
+			scene.drawables.emplace_back(gun_transforms[i]);
+		}
+
+		// only draw SINGLE gun to start with
+		// scene.drawables.emplace_back(gun_transforms[0]);
+		// Scene::Drawable &d_gun = scene.drawables.back();
+		// d_gun.pipeline = lit_color_texture_program_pipeline;
+		// d_gun.pipeline.vao = main_meshes_for_lit_color_texture_program;
+		// d_gun.pipeline.type = gun_drawables[0].type;
+		// d_gun.pipeline.start = gun_drawables[0].start;
+		// d_gun.pipeline.count = gun_drawables[0].count;
 
 		border_transform = new Scene::Transform;
 		border_transform->name = "Border";
@@ -411,7 +442,7 @@ void PlayMode::read_notes(std::string song_name) {
 	Switches between two backgrounds on each direction to create an effect of it being infinite
 */
 void PlayMode::update_bg(float elapsed) {
-	assert(gameState == PLAYING);
+	assert(game_state == PLAYING);
 
 	float note_speed = (border_depth - init_note_depth) / note_approach_time;
 	for (size_t i = 0; i < bg_transforms.size() - 1; i++) {
@@ -426,7 +457,7 @@ void PlayMode::update_bg(float elapsed) {
 	We maintain the list of notes to be checked in the following way: 
 		We keep track of two types of variables. First are note_start_idx and 
 		note_end_idx, which records the range of notes that have spawned but have
-		yet to reach the disappearing line. Second are each note's isActive boolean,
+		yet to reach the disappearing line. Second are each note's is_active boolean,
 		which if a note was correctly hit by the player should toggle to false and
 		make the note have 0 scale. We however do not immediately update the indices,
 		meaning the note will continue to move towards the player until it reaches the
@@ -437,7 +468,7 @@ void PlayMode::update_bg(float elapsed) {
 	check if we should start the next note or not.
 */
 void PlayMode::update_notes() {
-	assert(gameState == PLAYING);
+	assert(game_state == PLAYING);
 
 	auto current_time = std::chrono::high_resolution_clock::now();
 	float music_time = std::chrono::duration<float>(current_time - music_start_time).count();
@@ -446,10 +477,10 @@ void PlayMode::update_notes() {
 		if (i >= (int)notes.size()) continue;
 		auto &note = notes[i];
 		for (int j = 0; j < (int)note.note_transforms.size(); j++) {
-			if (note.isActive) {
+			if (note.is_active) {
 				if (music_time > note.hit_times[j] + valid_hit_time_delta + real_song_offset) {
 					// 'delete' the note
-					if (!note.beenHit) hit_note(nullptr, -1);
+					if (!note.been_hit) hit_note(nullptr, -1);
 
 					note.note_transforms[j]->scale = glm::vec3(0.0f, 0.0f, 0.0f);
 					note_start_idx += 1;
@@ -463,10 +494,10 @@ void PlayMode::update_notes() {
 					note.note_transforms[j]->position.z = init_note_depth + note_speed * delta_time;
 				}
 			} else {
-				if (!note.beenHit) {
+				if (!note.been_hit) {
 					if (music_time >= note.hit_times[j] - note_approach_time + real_song_offset) {
 						// spawn the note
-						note.isActive = true;
+						note.is_active = true;
 						if(note.noteType == NoteType::HOLD) {
 							note.note_transforms[j]->scale = glm::vec3(0.1f, 0.1f, note.hit_times[j+1] - note.hit_times[j]);
 							note.note_transforms[j]->position.z = init_note_depth - (note.hit_times[j+1] - note.hit_times[j]) / 2;
@@ -624,7 +655,7 @@ void PlayMode::hit_note(NoteInfo* note, int hit_status) {
 	}
 
 	// deactivate the note
-	note->beenHit = true;
+	note->been_hit = true;
 
 	if (hit_status == 0) {
 		// bad hit, same as miss
@@ -638,14 +669,14 @@ void PlayMode::hit_note(NoteInfo* note, int hit_status) {
 		score += 50;
 		combo += 1;
 		multiplier = combo / 25 + 1;
-		health = std::min(maxHealth, health + 0.03f);
+		health = std::min(max_health, health + 0.03f);
 	} else if (hit_status == 2) {
 		// good hit
 		Sound::play(note_hit_sound);
 		score += 100;
 		combo += 1;
 		multiplier = combo / 25 + 1;
-		health = std::min(maxHealth, health + 0.03f);
+		health = std::min(max_health, health + 0.03f);
 	}
 
 	// TODO: fix this for hold
@@ -659,7 +690,7 @@ void PlayMode::hit_note(NoteInfo* note, int hit_status) {
 }
 
 /*
-	Function called whenever we clickon the screen
+	Function called whenever we click on the screen
 		Checks if we hit any note, see if the hit is valid or not and then calls hit note based on that
 */
 void PlayMode::check_hit() {
@@ -731,14 +762,34 @@ void PlayMode::check_hit() {
 }
 
 /*
+	Helper function to change gun firing mode and relevant drawable / transform settings
+*/
+void PlayMode::change_gun(int idx_change, int manual_idx=-1) {
+	assert(manual_idx != -1 || (idx_change == 1 || idx_change == -1));
+
+	if (manual_idx != -1) {
+		gun_mode = manual_idx;
+		gun_transforms[manual_idx]->scale = gun_scale;
+	} else {
+		gun_transforms[gun_mode]->scale = glm::vec3();
+
+		gun_mode += idx_change;
+		if (gun_mode == 3) gun_mode = 0;
+		else if (gun_mode == -1) gun_mode = 2;
+
+		gun_transforms[gun_mode]->scale = gun_scale;
+	}
+}
+
+/*
 	Helper function to resetting all note values to initial state when restarting a song
 */
 void PlayMode::reset_song() {
 	// reset loaded assets
 	if (active_song) active_song->stop();
 	for (auto &note: notes) {
-		note.beenHit = false;
-		note.isActive = false;
+		note.been_hit = false;
+		note.is_active = false;
 		for (uint64_t i = 0; i < note.note_transforms.size(); i++) {
 			note.note_transforms[i]->position = glm::vec3(note.note_transforms[i]->position.x, note.note_transforms[i]->position.y, init_note_depth);
 			note.note_transforms[i]->scale = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -755,7 +806,7 @@ void PlayMode::reset_song() {
 void PlayMode::to_menu() {
 	// reset all state variables
 	has_started = false;
-	gameState = MENU;
+	game_state = MENU;
 	hovering_text = (uint8_t)chosen_song;
 
 	reset_song();
@@ -783,8 +834,10 @@ void PlayMode::start_song(int idx, bool restart) {
 	multiplier = 1;
 	health = 0.7f;
 
+	change_gun(0, 0);
+
 	has_started = true;
-	gameState = PLAYING;
+	game_state = PLAYING;
 	chosen_song = idx;
 
 	music_start_time = std::chrono::high_resolution_clock::now(); // might want to reconsider if we want buffer time between starting the song and loading the level
@@ -812,7 +865,7 @@ void PlayMode::restart_song() {
 	// TODO : need to actually figure out how to pause song
 */
 void PlayMode::pause_song() {
-	gameState = PAUSED;
+	game_state = PAUSED;
 	hovering_text = 0;
 	music_pause_time = std::chrono::high_resolution_clock::now();
 }
@@ -824,7 +877,7 @@ void PlayMode::pause_song() {
 	// TODO : need to actually figure out how to unpause song
 */
 void PlayMode::unpause_song() {
-	gameState = PLAYING;
+	game_state = PLAYING;
 	SDL_SetRelativeMouseMode(SDL_TRUE);
 	auto current_time = std::chrono::high_resolution_clock::now();
 	music_start_time += current_time - music_pause_time;
@@ -834,14 +887,14 @@ void PlayMode::unpause_song() {
 	Function that ends the game and makes all events do nothing
 		Should be called when either health reaches zero or if note_start_idx is equal to the end of the vector 
 */
-void PlayMode::game_over(bool didClear) {
+void PlayMode::game_over(bool did_clear) {
 	hovering_text = 0;
-	if (didClear) {
+	if (did_clear) {
 		std::cout << "song cleared!\n";
-		gameState = SONGCLEAR;
+		game_state = SONGCLEAR;
 	} else {
 		std::cout << "song failed!\n";
-		gameState = GAMEOVER;
+		game_state = GAMEOVER;
 	}
 }
 
@@ -857,7 +910,7 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 		} else if (evt.key.keysym.sym == SDLK_MINUS) {
 			mouse_sens = (mouse_sens - mouse_sens_inc <= mouse_sens_min) ? mouse_sens_min : mouse_sens - mouse_sens_inc;
 			return true;
-		} else if (gameState == MENU) {
+		} else if (game_state == MENU) {
 			if (evt.key.keysym.sym == SDLK_RETURN) {
 				start_song(hovering_text, false);
 				return true;
@@ -872,16 +925,24 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 				exit(0);
 				return true;
 			}
-		} else if (gameState == PLAYING) {
-			if (evt.key.keysym.sym == SDLK_z || evt.key.keysym.sym == SDLK_x) {
+		} else if (game_state == PLAYING) {
+			if (evt.key.keysym.sym == SDLK_c || evt.key.keysym.sym == SDLK_v) {
 				check_hit();
+				return true;
+			} else if (evt.key.keysym.sym == SDLK_z) {
+				// go to previous gun mode
+				change_gun(-1);
+				return true;
+			} else if (evt.key.keysym.sym == SDLK_x) {
+				// go to next gun mode
+				change_gun(1);
 				return true;
 			} else if (evt.key.keysym.sym == SDLK_ESCAPE) {
 				SDL_SetRelativeMouseMode(SDL_FALSE);
 				pause_song();
 				return true;
 			}
-		} else if (gameState == PAUSED) {
+		} else if (game_state == PAUSED) {
 			if (evt.key.keysym.sym == SDLK_RETURN) {
 				if (hovering_text == 0) {unpause_song(); return true;}
 				else if (hovering_text == 1) {restart_song(); return true;}
@@ -898,7 +959,7 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 				unpause_song();
 				return true;
 			}
-		} else if (gameState == SONGCLEAR || gameState == GAMEOVER) {
+		} else if (game_state == SONGCLEAR || game_state == GAMEOVER) {
 			if (evt.key.keysym.sym == SDLK_RETURN) {
 				if (hovering_text == 0) {restart_song(); return true;}
 				else if (hovering_text == 1) {to_menu(); return true;}
@@ -918,15 +979,15 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 	}
 	else if (evt.type == SDL_MOUSEBUTTONDOWN) {
 		SDL_SetRelativeMouseMode(SDL_TRUE);
-		if (gameState != PLAYING) return true;
+		if (game_state != PLAYING) return true;
 		check_hit();
 		holding = true;
 	} else if (evt.type == SDL_MOUSEBUTTONUP) {
-		if (gameState != PLAYING) return true;
+		if (game_state != PLAYING) return true;
 		holding = false;
 		check_hit();
 	} else if (evt.type == SDL_MOUSEMOTION) {
-		if (gameState != PLAYING) return true;
+		if (game_state != PLAYING) return true;
 		
 		// From ShowSceneProgram.cpp
 		glm::vec2 delta;
@@ -955,7 +1016,7 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 		}
 		return true;
 	} else if (holding) {
-		if (gameState != PLAYING) return true;
+		if (game_state != PLAYING) return true;
 		check_hit();
 		return true;
 	}
@@ -966,7 +1027,7 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 	Function to call the update functions on the background and notes
 */
 void PlayMode::update(float elapsed) {
-	if (gameState == PLAYING) {
+	if (game_state == PLAYING) {
 		update_bg(elapsed);
 		update_notes();
 	}
@@ -1014,7 +1075,10 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 			0.0f, 0.0f, 0.0f, 1.0f
 		));
 
-		if (gameState == MENU) {
+		constexpr float H = 0.09f;
+		float ofs = 2.0f / drawable_size.y;
+
+		if (game_state == MENU) {
 			for (int i = hovering_text - 2; i < hovering_text + 3; i++) {
 				if (i < 0 || i >= (int)song_list.size()) continue;
 				std::string text = song_list[i].first;
@@ -1026,7 +1090,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 					glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 					glm::u8vec4(0xff, 0xff, 0xff, 0x00));
 			}
-		} else if (gameState == PLAYING) {
+		} else if (game_state == PLAYING) {
 			// crosshair
 			for (uint32_t a = 0; a < circle.size(); ++a) {
 				for (float r = 0.02f; r >= 0.015f; r -= 0.001f) {
@@ -1041,7 +1105,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 				glm::vec3(aspect - 0.3f - ofs, 0.8f, 0.0f),
 				glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 				glm::u8vec4(0xff, 0xff, 0xff, 0x00));
-		} else if (gameState == PAUSED) {
+		} else if (game_state == PAUSED) {
 			for (int i = hovering_text - 2; i < hovering_text + 3; i++) {
 				if (i < 0 || i >= (int)option_texts.size()) continue;
 				std::string text = option_texts[i];
@@ -1053,7 +1117,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 					glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 					glm::u8vec4(0xff, 0xff, 0xff, 0x00));
 			}
-		} else if (gameState == SONGCLEAR) {
+		} else if (game_state == SONGCLEAR) {
 			for (int i = hovering_text - 2; i < hovering_text + 3; i++) {
 				if (i < 0 || i >= (int)songover_texts.size()) continue;
 				std::string text = songover_texts[i];
@@ -1065,7 +1129,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 					glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 					glm::u8vec4(0xff, 0xff, 0xff, 0x00));
 			}
-		} else if (gameState == GAMEOVER) {
+		} else if (game_state == GAMEOVER) {
 			for (int i = hovering_text - 2; i < hovering_text + 3; i++) {
 				if (i < 0 || i >= (int)songover_texts.size()) continue;
 				std::string text = songover_texts[i];

@@ -41,8 +41,8 @@ struct NoteInfo {
 
 	// We need both beenHit and isActive because otherwise notes that has been
 	// hit will keep re-activating
-	bool beenHit = false;
-	bool isActive = false;
+	bool been_hit = false;
+	bool is_active = false;
 };
 
 // struct for intersection functions
@@ -77,6 +77,8 @@ struct PlayMode : Mode {
 	void check_hit();
 	void hit_note(NoteInfo* note, int hit_status);
 
+	void change_gun(int idx_change, int manual_idx);
+
 	// game state related functions
 	void reset_song();
 	void to_menu();
@@ -84,7 +86,7 @@ struct PlayMode : Mode {
 	void restart_song();
 	void pause_song();
 	void unpause_song();
-	void game_over(bool didClear);
+	void game_over(bool did_clear);
 
 	//----- game state -----
 	enum GameState {
@@ -93,7 +95,7 @@ struct PlayMode : Mode {
 		MENU,
 		SONGCLEAR,
 		GAMEOVER,
-	} gameState;
+	} game_state;
 
 	// variable to keep track if mouse click is being held down
 	bool holding = false;
@@ -123,6 +125,10 @@ struct PlayMode : Mode {
 	// gun information
 	Drawable gun_drawable;
 	Scene::Transform *gun_transform = nullptr;
+	std::vector<Drawable> gun_drawables;
+	std::vector<Scene::Transform *> gun_transforms;
+	glm::vec3 const gun_scale = glm::vec3(0.01f, 0.01f, 0.1f);
+	int gun_mode = 0;
 
 	// border information
 	Drawable border_drawable;
@@ -146,7 +152,7 @@ struct PlayMode : Mode {
 	int combo = 0;
 	int multiplier = 1;
 	float health = 0.7f;
-	float const maxHealth = 1.0f;
+	float const max_health = 1.0f;
 
 	// UI
 	std::vector<std::string> option_texts {"RESUME", "RESTART", "EXIT"};
