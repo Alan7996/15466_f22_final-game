@@ -513,7 +513,7 @@ void PlayMode::update_notes() {
 						// spawn the note
 						note.is_active = true;
 						if(note.noteType == NoteType::HOLD) {
-							note.note_transforms[j]->scale = glm::vec3(0.1f, 0.1f, note.hit_times[j+1] - note.hit_times[j]);
+							note.note_transforms[j]->scale = glm::vec3(0.5f, 0.5f, (note.hit_times[j+1] - note.hit_times[j]));
 							note.note_transforms[j]->position.z = init_note_depth - (note.hit_times[j+1] - note.hit_times[j]) / 2;
 						}
 						else {

@@ -8,3 +8,7 @@ Authors to credit:
  sphere-roller.blend -- Jim McCann
  sphere-world.blend -- Jim McCann
  phone-bank.blend -- Jim McCann
+
+
+ spider.obj - "Huggable Spider" (https://skfb.ly/nkjih2dc0) by electronicfox is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).
+ Snake.blend - "Snake 3d" (https://skfb.ly/osKLL) by Talha Riaz is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).
