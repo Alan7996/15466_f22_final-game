@@ -39,6 +39,8 @@ struct NoteInfo {
 	glm::vec3 min = glm::vec3();
 	glm::vec3 max = glm::vec3();
 
+	glm::vec3 scale = glm::vec3();
+
 	// We need both beenHit and isActive because otherwise notes that has been
 	// hit will keep re-activating
 	bool been_hit = false;

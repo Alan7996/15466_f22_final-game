@@ -21,7 +21,6 @@
 
 // float representing a small epsilon
 static float constexpr EPS_F = 0.0000001f;
-const bool DEBUG = true;
 
 // initialize the index to look up meshes info
 GLuint main_meshes_for_lit_color_texture_program = 0;
@@ -365,6 +364,16 @@ void PlayMode::read_notes(std::string song_name) {
 			note.dir = dir;
 			// this requires a bit more thinking on how to handle hold notes
 
+			if (note_mesh_idx == 1) {
+				note.scale = glm::vec3(0.06f, 0.015f, 0.015f);
+			} else if (note_mesh_idx == 2) {
+				note.scale = glm::vec3(0.15f, 0.08f, 0.1f);
+			} else if (note_mesh_idx == 4) {
+				note.scale = glm::vec3(0.06f, 0.008f, 0.015f);
+			} else {
+				note.scale = glm::vec3(0.1f, 0.1f, 0.1f);
+			}
+
 			if (note_type == "hold") {
 				note.noteType = NoteType::HOLD;
 
@@ -498,12 +507,8 @@ void PlayMode::update_notes() {
 							note.note_transforms[j]->position.z = init_note_depth - (note.hit_times[j+1] - note.hit_times[j]) / 2;
 						}
 						else {
-							if (DEBUG) {
-								note.note_transforms[j]->scale = glm::vec3(0.2f, 0.06f, 0.1f);
-								note.note_transforms[j]->rotation = glm::quat(0.0f, -1.0f, 0.0f, 0.7f);
-							} else {
-								note.note_transforms[j]->scale = glm::vec3(0.1f, 0.1f, 0.1f);
-							}
+							note.note_transforms[j]->scale = note.scale;
+							// note.note_transforms[j]->rotation = glm::quat(0.0, -1.0f, 0.0f, -0.7f); // TODO: WTF
 						}
 						note_end_idx += 1;
 					}
