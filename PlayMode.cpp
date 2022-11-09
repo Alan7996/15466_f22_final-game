@@ -100,6 +100,7 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 
 	std::vector<Drawable> default_skin(15);
 	std::vector<Drawable> backgrounds(9);
+	std::vector<Drawable> gun_drawables(3);
 
 	for (auto &d : scene.drawables) {
 		if (d.transform->name.find("Note") != std::string::npos) {
@@ -108,24 +109,6 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 			default_skin[idx].type = d.pipeline.type;
 			default_skin[idx].start = d.pipeline.start;
 			default_skin[idx].count = d.pipeline.count;
-		} else if (d.transform->name == "Ghost") {
-			if (DEBUG) {
-				default_skin[0].type = d.pipeline.type;
-				default_skin[0].start = d.pipeline.start;
-				default_skin[0].count = d.pipeline.count;
-			}
-		}
-		else if (d.transform->name == "Pumpkin") {
-			if (DEBUG) {
-				default_skin[1].type = d.pipeline.type;
-				default_skin[1].start = d.pipeline.start;
-				default_skin[1].count = d.pipeline.count;
-			}
-		}
-		else if (d.transform->name == "Gun") {
-			gun_drawable.type = d.pipeline.type;
-			gun_drawable.start = d.pipeline.start;
-			gun_drawable.count = d.pipeline.count;
 		} else if (d.transform->name == "GunSingle") {
 			gun_drawables[0].type = d.pipeline.type;
 			gun_drawables[0].start = d.pipeline.start;
@@ -185,36 +168,36 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 	scene.drawables.clear();
 
 	{ // initialize game state
-		gun_transform = new Scene::Transform;
-		gun_transform->name = "Gun";
-		gun_transform->parent = camera->transform;
-		// TODO: these numbers need tweaking once we finalize the gun model
-		gun_transform->position = glm::vec3(0.03f, -0.06f, -0.4f);
-		gun_transform->scale = gun_scale;
-		gun_transform->rotation = glm::quat(0.0f, 0.0f, 1.0f, 0.0f);
-		scene.drawables.emplace_back(gun_transform);
-		Scene::Drawable &d1 = scene.drawables.back();
-		d1.pipeline = lit_color_texture_program_pipeline;
-		d1.pipeline.vao = main_meshes_for_lit_color_texture_program;
-		d1.pipeline.type = gun_drawable.type;
-		d1.pipeline.start = gun_drawable.start;
-		d1.pipeline.count = gun_drawable.count;
+		// gun_transform = new Scene::Transform;
+		// gun_transform->name = "Gun";
+		// gun_transform->parent = camera->transform;
+		// // TODO: these numbers need tweaking once we finalize the gun model
+		// gun_transform->position = glm::vec3(0.05f, -0.06f, -0.2f);
+		// gun_transform->scale = gun_scale;
+		// gun_transform->rotation = glm::quat(0.0f, -0.5f, 1.0f, 0.1f);
+		// scene.drawables.emplace_back(gun_transform);
+		// Scene::Drawable &d1 = scene.drawables.back();
+		// d1.pipeline = lit_color_texture_program_pipeline;
+		// d1.pipeline.vao = main_meshes_for_lit_color_texture_program;
+		// d1.pipeline.type = gun_drawable.type;
+		// d1.pipeline.start = gun_drawable.start;
+		// d1.pipeline.count = gun_drawable.count;
 
 		gun_transforms.resize(3);
 		for (int i = 0; i < 3; i++) {
 			gun_transforms[i] = new Scene::Transform;
 			gun_transforms[i]->parent = camera->transform;
 			// TODO: these numbers need tweaking once we finalize the gun model
-			gun_transforms[i]->position = glm::vec3(0.03f, -0.06f, -0.4f);
-			gun_transforms[i]->scale = glm::vec3();
-			gun_transforms[i]->rotation = glm::quat(0.0f, 0.0f, 1.0f, 0.0f);
+			gun_transforms[i]->position = glm::vec3(0.05f, -0.06f, -0.2f);
+			gun_transforms[i]->scale = gun_scale;
+			gun_transforms[i]->rotation = glm::quat(0.0f, -0.5f, 1.0f, 0.1f);
 			scene.drawables.emplace_back(gun_transforms[i]);
-			// Scene::Drawable &d_gun = scene.drawables.back();
-			// d_gun.pipeline = lit_color_texture_program_pipeline;
-			// d_gun.pipeline.vao = main_meshes_for_lit_color_texture_program;
-			// d_gun.pipeline.type = gun_drawables[i].type;
-			// d_gun.pipeline.start = gun_drawables[i].start;
-			// d_gun.pipeline.count = gun_drawables[i].count;
+			Scene::Drawable &d_gun = scene.drawables.back();
+			d_gun.pipeline = lit_color_texture_program_pipeline;
+			d_gun.pipeline.vao = main_meshes_for_lit_color_texture_program;
+			d_gun.pipeline.type = gun_drawables[i].type;
+			d_gun.pipeline.start = gun_drawables[i].start;
+			d_gun.pipeline.count = gun_drawables[i].count;
 		}
 
 		border_transform = new Scene::Transform;
@@ -768,7 +751,7 @@ void PlayMode::check_hit() {
 				hit_note(hits.note, 4);
 				std::cout << "score: " << score << ", last click hitting\n";
 			}
-			else if(holding) {
+			else if (holding) {
 				// holding in between note
 				// TODO: fix the math on the next line
 				glm::vec2 coord = get_coords(hits.note->dir, hits.note->coord_begin + (music_time - hits.note->hit_times[0] + real_song_offset) * (hits.note->coord_end - hits.note->coord_begin) * note_approach_time / (hits.note->hit_times[1] - hits.note->hit_times[0]));
@@ -1108,7 +1091,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 	glUniform1i(lit_color_texture_program->LIGHT_TYPE_int, 0);
 	glUniform3fv(lit_color_texture_program->LIGHT_LOCATION_vec3, 1, glm::value_ptr(camera->transform->position + glm::vec3(0.0f, 0.0f, 0.0f)));
 	glUniform3fv(lit_color_texture_program->LIGHT_DIRECTION_vec3, 1, glm::value_ptr(glm::vec3(0.0f, 0.0f, -1.0f)));
-	glUniform3fv(lit_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(50.0f, 50.0f, 50.0f)));
+	glUniform3fv(lit_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(30.0f, 30.0f, 30.0f)));
 	glUseProgram(0);
 
 	glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
