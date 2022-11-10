@@ -71,7 +71,7 @@ struct PlayMode : Mode {
 
 	// update functions - background and notes
 	void update_bg(float elapsed);
-	void update_notes();
+	void update_notes(float elapsed);
 	void set_health_bar();
 
 	// intersection functions to hit notes

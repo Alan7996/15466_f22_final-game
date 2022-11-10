@@ -525,11 +525,14 @@ void PlayMode::update_bg(float elapsed) {
 	Also note that we always loop up to ONE INDEX HIGHER than the end index, to
 	check if we should start the next note or not.
 */
-void PlayMode::update_notes() {
+void PlayMode::update_notes(float elapsed) {
 	assert(game_state == PLAYING);
 
 	auto current_time = std::chrono::high_resolution_clock::now();
 	float music_time = std::chrono::duration<float>(current_time - music_start_time).count();
+
+	health = std::max(0.0f, health - elapsed / 50.0f);
+	set_health_bar();
 	
 	for (int i = note_start_idx; i < note_end_idx + 1; i++) {
 		if (i >= (int)notes.size()) continue;
@@ -1159,7 +1162,7 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 void PlayMode::update(float elapsed) {
 	if (game_state == PLAYING) {
 		update_bg(elapsed);
-		update_notes();
+		update_notes(elapsed);
 	}
 }
 
