@@ -770,12 +770,12 @@ void PlayMode::hit_note(NoteInfo* note, int hit_status) {
 			// hold during success
 			score += 1 * multiplier;
 			set_combo(1);
-			health = std::min(max_health, health + 0.003f);
+			health = std::min(max_health, health + 0.0003f);
 			break;
 		case 6:
 			// hold during fail
 			set_combo(-combo);
-			health = std::max(0.0f, health - 0.003f);
+			health = std::max(0.0f, health - 0.0003f);
 			break;
 	}
 
@@ -828,7 +828,7 @@ void PlayMode::check_hit(bool mouse_down=true) {
 				// std::cout << coord.first << " " << coord.second << " " << music_time << " " << hits.note->hit_times[0] + real_song_offset << "\n";
 				glm::vec3 end = glm::vec3(inverse * glm::vec4(coord.x, coord.y, border_depth, 1.0f));
 				float dist = glm::distance(start, end);
-				if(dist - 2 < hits.time && hits.time < dist + 2) {
+				if(gun_mode == 2 && dist - 2 < hits.time && hits.time < dist + 2) {
 					hit_note(hits.note, 5);
 					// std::cout << "score: " << score << ", still hitting\n";		
 				}
@@ -917,6 +917,12 @@ void PlayMode::to_menu() {
 	game_state = MENU;
 	hovering_text = (uint8_t)chosen_song;
 
+	bg_transforms[9]->position = glm::vec3(0.0f, 0.0f, bgscale);
+
+	for (int i = 0; i < 3; i++) {
+		gun_transforms[i]->scale = glm::vec3();
+	}
+	
 	healthbar_transform->scale = glm::vec3();
 	healthbarleft_transform->scale = glm::vec3();
 	healthbarright_transform->scale = glm::vec3();
@@ -954,6 +960,7 @@ void PlayMode::start_song(int idx, bool restart) {
 	if (has_started) return;
 
 	song_cleared = false;
+	holding = false;
 
 	reset_cam();
 	SDL_SetRelativeMouseMode(SDL_TRUE);
@@ -965,6 +972,10 @@ void PlayMode::start_song(int idx, bool restart) {
 	max_combo = 0;
 	multiplier = 1;
 	health = 0.7f;
+
+	for (int i = 0; i < 3; i++) {
+		gun_transforms[i]->scale = glm::vec3();
+	}
 
 	healthbar_transform->scale = healthbar_scale;
 	healthbarleft_transform->scale = healthbar_LR_scale;
@@ -1026,8 +1037,15 @@ void PlayMode::unpause_song() {
 		Should be called when either health reaches zero or if note_start_idx is equal to the end of the vector 
 */
 void PlayMode::game_over(bool did_clear) {
-	if (active_song) active_song->stop();
 	reset_cam();
+	if (active_song) active_song->set_volume(0.0f, 3.0f);
+	bg_transforms[9]->position = glm::vec3(0.0f, 0.0f, 2.0f);
+
+	healthbar_transform->scale = glm::vec3();
+	healthbarleft_transform->scale = glm::vec3();
+	healthbarright_transform->scale = glm::vec3();
+	border_transform->scale = glm::vec3();
+	gun_transforms[gun_mode]->scale = glm::vec3();
 
 	hovering_text = 0;
 	if (did_clear) {
