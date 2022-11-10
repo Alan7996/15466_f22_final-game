@@ -98,7 +98,7 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 	camera = &scene.cameras.front();
 
 	std::vector<Drawable> default_skin(15);
-	std::vector<Drawable> backgrounds(9);
+	std::vector<Drawable> backgrounds(10);
 	std::vector<Drawable> gun_drawables(3);
 
 	for (auto &d : scene.drawables) {
@@ -144,6 +144,9 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 			backgrounds[8].type = d.pipeline.type;
 			backgrounds[8].start = d.pipeline.start;
 			backgrounds[8].count = d.pipeline.count;
+			backgrounds[9].type = d.pipeline.type;
+			backgrounds[9].start = d.pipeline.start;
+			backgrounds[9].count = d.pipeline.count;
 		} else if (d.transform->name == "BGUp") {
 			backgrounds[0].type = d.pipeline.type;
 			backgrounds[0].start = d.pipeline.start;
@@ -216,6 +219,7 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 		healthbarleft_transform = new Scene::Transform;
 		healthbarleft_transform->name = "HealthbarLeft";
 		healthbarleft_transform->parent = healthbar_transform;
+		healthbarleft_transform->scale = healthbar_LR_scale;
 		scene.drawables.emplace_back(healthbarleft_transform);
 		Scene::Drawable &d1l = scene.drawables.back();
 		d1l.pipeline = lit_color_texture_program_pipeline;
@@ -227,6 +231,7 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 		healthbarright_transform = new Scene::Transform;
 		healthbarright_transform->name = "HealthbarRight";
 		healthbarright_transform->parent = healthbar_transform;
+		healthbarright_transform->scale = healthbar_LR_scale;
 		scene.drawables.emplace_back(healthbarright_transform);
 		Scene::Drawable &d1r = scene.drawables.back();
 		d1r.pipeline = lit_color_texture_program_pipeline;
@@ -259,46 +264,50 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 		d2.pipeline.start = border_drawable.start;
 		d2.pipeline.count = border_drawable.count;
 
-		bg_transforms.resize(9);
+		bg_transforms.resize(10);
 		bgscale = abs(init_note_depth - max_depth);
 
-		for (int i = 0; i < 9; i++) {
+		for (int i = 0; i < 10; i++) {
 			bg_transforms[i] = new Scene::Transform;
 			switch (i) {
 				case 0: // Up
-					bg_transforms[i]->position = glm::vec3(0, 2.0f * y_scale, 0);
+					bg_transforms[i]->position = glm::vec3(0, 5.0f * y_scale, 0);
 					bg_transforms[i]->scale = glm::vec3(bgscale, 1, bgscale);
 					break;
 				case 1:
-					bg_transforms[i]->position = glm::vec3(0, 2.0f * y_scale, -2.0f * bgscale);
+					bg_transforms[i]->position = glm::vec3(0, 5.0f * y_scale, -2.0f * bgscale);
 					bg_transforms[i]->scale = glm::vec3(bgscale, 1, bgscale);
 					break;
 				case 2: // Down
-					bg_transforms[i]->position = glm::vec3(0, -2.0f * y_scale, 0);
+					bg_transforms[i]->position = glm::vec3(0, -5.0f * y_scale, 0);
 					bg_transforms[i]->scale = glm::vec3(bgscale, 1, bgscale);
 					break;
 				case 3:
-					bg_transforms[i]->position = glm::vec3(0, -2.0f * y_scale, -2.0f * bgscale);
+					bg_transforms[i]->position = glm::vec3(0, -5.0f * y_scale, -2.0f * bgscale);
 					bg_transforms[i]->scale = glm::vec3(bgscale, 1, bgscale);
 					break;
 				case 4: // Left
-					bg_transforms[i]->position = glm::vec3(-2.0f * x_scale, 0, 0);
+					bg_transforms[i]->position = glm::vec3(-5.0f * x_scale, 0, 0);
 					bg_transforms[i]->scale = glm::vec3(1, bgscale, bgscale);
 					break;
 				case 5:
-					bg_transforms[i]->position = glm::vec3(-2.0f * x_scale, 0, -2.0f * bgscale);
+					bg_transforms[i]->position = glm::vec3(-5.0f * x_scale, 0, -2.0f * bgscale);
 					bg_transforms[i]->scale = glm::vec3(1, bgscale, bgscale);
 					break;
 				case 6: // Right
-					bg_transforms[i]->position = glm::vec3(2.0f * x_scale, 0, 0);
+					bg_transforms[i]->position = glm::vec3(5.0f * x_scale, 0, 0);
 					bg_transforms[i]->scale = glm::vec3(1, bgscale, bgscale);
 					break;
 				case 7:
-					bg_transforms[i]->position = glm::vec3(2.0f * x_scale, 0, -2.0f * bgscale);
+					bg_transforms[i]->position = glm::vec3(5.0f * x_scale, 0, -2.0f * bgscale);
 					bg_transforms[i]->scale = glm::vec3(1, bgscale, bgscale);
 					break;
-				case 8: // Center
+				case 8: // Center front
 					bg_transforms[i]->position = glm::vec3(0, 0, -bgscale);
+					bg_transforms[i]->scale = glm::vec3(bgscale, bgscale, 1);
+					break;
+				case 9: // Center back
+					bg_transforms[i]->position = glm::vec3(0, 0, bgscale);
 					bg_transforms[i]->scale = glm::vec3(bgscale, bgscale, 1);
 					break;
 			}
@@ -488,7 +497,7 @@ void PlayMode::update_bg(float elapsed) {
 	assert(game_state == PLAYING);
 
 	float note_speed = (border_depth - init_note_depth) / note_approach_time;
-	for (size_t i = 0; i < bg_transforms.size() - 1; i++) {
+	for (size_t i = 0; i < bg_transforms.size() - 2; i++) {
 		bg_transforms[i]->position.z = bg_transforms[i]->position.z + note_speed * elapsed;
 		if (bg_transforms[i]->position.z > 2.0f * bgscale) 
 			bg_transforms[i]->position.z = -2.0f * bgscale;
@@ -775,7 +784,7 @@ void PlayMode::hit_note(NoteInfo* note, int hit_status) {
 	Function called whenever we click on the screen
 		Checks if we hit any note, see if the hit is valid or not and then calls hit note based on that
 */
-void PlayMode::check_hit() {
+void PlayMode::check_hit(bool mouse_down=true) {
 	// ray from camera position to origin (p1 - p2)
 	glm::vec3 ray = glm::vec3(0) - camera->transform->position;
 	// rotate ray to get the direction from camera
@@ -789,12 +798,12 @@ void PlayMode::check_hit() {
 	if(hits.note) {
 		if(hits.note->noteType == NoteType::HOLD) {
 			// only considers first 0.2 seconds of the hold -> need to change
-			if(fabs(music_time - hits.note->hit_times[0] + real_song_offset) < valid_hit_time_delta && !holding) {
+			if(fabs(music_time - hits.note->hit_times[0] + real_song_offset) < valid_hit_time_delta && !holding && mouse_down) {
 				// initial click
 				hit_note(hits.note, 4);
 				std::cout << "score: " << score << ", first click hitting\n";
 			}
-			else if(fabs(hits.note->hit_times[1] - music_time + real_song_offset) < valid_hit_time_delta && !holding) {
+			else if(fabs(hits.note->hit_times[1] - music_time + real_song_offset) < valid_hit_time_delta && !holding && !mouse_down) {
 				// release near the end
 				hit_note(hits.note, 4);
 				std::cout << "score: " << score << ", last click hitting\n";
@@ -820,6 +829,8 @@ void PlayMode::check_hit() {
 			}
 		}
 		else {
+			if (holding || !mouse_down) return; // don't allow mouse LMB down hold cheese or lifting mouse button up
+
 			// valid hit time for single and burst
 			// std::cout << music_time << " " << hits.note->hit_times[0] + real_song_offset << "\n";
 			if(fabs(music_time - hits.note->hit_times[0] + real_song_offset) < valid_hit_time_delta / 2.0f) {
@@ -895,6 +906,10 @@ void PlayMode::to_menu() {
 	game_state = MENU;
 	hovering_text = (uint8_t)chosen_song;
 
+	healthbar_transform->scale = glm::vec3();
+	healthbarleft_transform->scale = glm::vec3();
+	healthbarright_transform->scale = glm::vec3();
+
 	reset_song();
 	reset_cam();
 
@@ -935,6 +950,10 @@ void PlayMode::start_song(int idx, bool restart) {
 	combo = 0;
 	multiplier = 1;
 	health = 0.7f;
+
+	healthbar_transform->scale = healthbar_scale;
+	healthbarleft_transform->scale = healthbar_LR_scale;
+	healthbarright_transform->scale = healthbar_LR_scale;
 	set_health_bar();
 
 	change_gun(0, 0);
@@ -1086,7 +1105,7 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 	} else if (evt.type == SDL_MOUSEBUTTONUP) {
 		if (game_state != PLAYING) return true;
 		holding = false;
-		check_hit();
+		check_hit(false);
 	} else if (evt.type == SDL_MOUSEMOTION) {
 		if (game_state != PLAYING) return true;
 		
@@ -1150,11 +1169,24 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 	camera->aspect = float(drawable_size.x) / float(drawable_size.y);
 
 	//set up light type and position for lit_color_texture_program:
+	
+	
+	/* point light - 0
 	glUseProgram(lit_color_texture_program->program);
 	glUniform1i(lit_color_texture_program->LIGHT_TYPE_int, 0);
 	glUniform3fv(lit_color_texture_program->LIGHT_LOCATION_vec3, 1, glm::value_ptr(camera->transform->position + glm::vec3(0.0f, 0.0f, 0.0f)));
 	glUniform3fv(lit_color_texture_program->LIGHT_DIRECTION_vec3, 1, glm::value_ptr(glm::vec3(0.0f, 0.0f, -1.0f)));
 	glUniform3fv(lit_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(30.0f, 30.0f, 30.0f)));
+	glUseProgram(0);
+	*/
+	// hemisphere light - 1
+	// spot light - 2
+	// directional light - 3
+	glUseProgram(lit_color_texture_program->program);
+	glUniform1i(lit_color_texture_program->LIGHT_TYPE_int, 1);
+	glUniform3fv(lit_color_texture_program->LIGHT_LOCATION_vec3, 1, glm::value_ptr(camera->transform->position + glm::vec3(0.0f, 0.0f, 10.0f)));
+	glUniform3fv(lit_color_texture_program->LIGHT_DIRECTION_vec3, 1, glm::value_ptr(glm::vec3(0.0f, 0.0f, -1.0f)));
+	glUniform3fv(lit_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(0.1f, 0.1f, 0.1f)));
 	glUseProgram(0);
 
 	glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
@@ -1231,6 +1263,15 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 					glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 					glm::u8vec4(0xff, 0xff, 0xff, 0x00));
 			}
+			lines.draw_text(std::to_string(score),
+				glm::vec3(aspect - 0.3f - ofs, 0.8f, 0.0f),
+				glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+				glm::u8vec4(0xff, 0xff, 0xff, 0x00));
+
+			lines.draw_text("x" + std::to_string(combo),
+				glm::vec3(aspect - 0.3f - ofs, 0.0f, 0.0f),
+				glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+				glm::u8vec4(0xff, 0xff, 0xff, 0x00));
 		} else if (game_state == SONGCLEAR) {
 			for (int i = hovering_text - 2; i < hovering_text + 3; i++) {
 				if (i < 0 || i >= (int)songover_texts.size()) continue;

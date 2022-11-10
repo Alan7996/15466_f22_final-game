@@ -386,7 +386,6 @@ void mix_audio(void *, Uint8 *buffer_, int len) {
 		start_pan.r *= start_volume * playing_sample.volume.value;
 
 		step_value_ramp(playing_sample.volume);
-		std::cout << std::to_string(playing_sample.volume.value) << std::endl;
 
 		//..and end of the mix period:
 		LR end_pan;
