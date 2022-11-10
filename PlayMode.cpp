@@ -784,7 +784,7 @@ void PlayMode::hit_note(NoteInfo* note, int hit_status) {
 	Function called whenever we click on the screen
 		Checks if we hit any note, see if the hit is valid or not and then calls hit note based on that
 */
-void PlayMode::check_hit() {
+void PlayMode::check_hit(bool mouse_down=true) {
 	// ray from camera position to origin (p1 - p2)
 	glm::vec3 ray = glm::vec3(0) - camera->transform->position;
 	// rotate ray to get the direction from camera
@@ -798,12 +798,12 @@ void PlayMode::check_hit() {
 	if(hits.note) {
 		if(hits.note->noteType == NoteType::HOLD) {
 			// only considers first 0.2 seconds of the hold -> need to change
-			if(fabs(music_time - hits.note->hit_times[0] + real_song_offset) < valid_hit_time_delta && !holding) {
+			if(fabs(music_time - hits.note->hit_times[0] + real_song_offset) < valid_hit_time_delta && !holding && mouse_down) {
 				// initial click
 				hit_note(hits.note, 4);
 				std::cout << "score: " << score << ", first click hitting\n";
 			}
-			else if(fabs(hits.note->hit_times[1] - music_time + real_song_offset) < valid_hit_time_delta && !holding) {
+			else if(fabs(hits.note->hit_times[1] - music_time + real_song_offset) < valid_hit_time_delta && !holding && !mouse_down) {
 				// release near the end
 				hit_note(hits.note, 4);
 				std::cout << "score: " << score << ", last click hitting\n";
@@ -829,6 +829,8 @@ void PlayMode::check_hit() {
 			}
 		}
 		else {
+			if (holding || !mouse_down) return; // don't allow mouse LMB down hold cheese or lifting mouse button up
+
 			// valid hit time for single and burst
 			// std::cout << music_time << " " << hits.note->hit_times[0] + real_song_offset << "\n";
 			if(fabs(music_time - hits.note->hit_times[0] + real_song_offset) < valid_hit_time_delta / 2.0f) {
@@ -1103,7 +1105,7 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 	} else if (evt.type == SDL_MOUSEBUTTONUP) {
 		if (game_state != PLAYING) return true;
 		holding = false;
-		check_hit();
+		check_hit(false);
 	} else if (evt.type == SDL_MOUSEMOTION) {
 		if (game_state != PLAYING) return true;
 		

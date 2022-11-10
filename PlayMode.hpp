@@ -77,7 +77,7 @@ struct PlayMode : Mode {
 	// intersection functions to hit notes
 	bool bbox_intersect(glm::vec3 pos, glm::vec3 dir, glm::vec3 min, glm::vec3 max, float &t);
 	HitInfo trace_ray(glm::vec3 pos, glm::vec3 dir);
-	void check_hit();
+	void check_hit(bool mouse_down);
 	void hit_note(NoteInfo* note, int hit_status);
 
 	void change_gun(int idx_change, int manual_idx);
