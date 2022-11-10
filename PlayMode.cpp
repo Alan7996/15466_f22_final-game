@@ -318,13 +318,13 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 
 		// would be nice to count the number of songs / know their names by reading through the file system
 		// all tutorial songs for testing purposes for now
-		song_list.emplace_back(std::make_pair("Tutorial", *load_song_tutorial));
-		song_list.emplace_back(std::make_pair("Tutorial2", *load_song_tutorial));
-		song_list.emplace_back(std::make_pair("Tutorial3", *load_song_tutorial));
-		song_list.emplace_back(std::make_pair("Tutorial4", *load_song_tutorial));
-		song_list.emplace_back(std::make_pair("Tutorial5", *load_song_tutorial));
-		song_list.emplace_back(std::make_pair("Tutorial6", *load_song_tutorial));
-		song_list.emplace_back(std::make_pair("Tutorial7", *load_song_tutorial));
+		song_list.emplace_back(std::make_pair("Halloween Madness", *load_song_tutorial));
+		song_list.emplace_back(std::make_pair("Halloween Greater Madness", *load_song_tutorial));
+		song_list.emplace_back(std::make_pair("Burst Is Supreme", *load_song_tutorial));
+		song_list.emplace_back(std::make_pair("All Hail Hold", *load_song_tutorial));
+		song_list.emplace_back(std::make_pair("Empty", *load_song_tutorial));
+		song_list.emplace_back(std::make_pair("Empty", *load_song_tutorial));
+		song_list.emplace_back(std::make_pair("Empty", *load_song_tutorial));
 
 		to_menu();
 	}
@@ -398,7 +398,7 @@ void PlayMode::read_notes(std::string song_name) {
 	// https://www.tutorialspoint.com/read-file-line-by-line-using-cplusplus
 	std::fstream file;
 	const char* delim = " ";
-	file.open(data_path(song_name + ".txt"), std::ios::in);
+	file.open(data_path("beatmaps/" + song_name + ".txt"), std::ios::in);
 	if (file.is_open()){
 		std::string line;
 		while(getline(file, line)){
@@ -922,7 +922,7 @@ void PlayMode::to_menu() {
 	for (int i = 0; i < 3; i++) {
 		gun_transforms[i]->scale = glm::vec3();
 	}
-	
+
 	healthbar_transform->scale = glm::vec3();
 	healthbarleft_transform->scale = glm::vec3();
 	healthbarright_transform->scale = glm::vec3();
