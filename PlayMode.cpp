@@ -250,7 +250,7 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 
 		border_transform = new Scene::Transform;
 		border_transform->name = "Border";
-		border_transform->position = glm::vec3(0.0f, 0.0f, 2.0f);
+		border_transform->position = glm::vec3(0.0f, 0.0f, 2.5f);
 		border_transform->scale = glm::vec3(x_scale, y_scale, 0.01f);
 		scene.drawables.emplace_back(border_transform);
 		Scene::Drawable &d2 = scene.drawables.back();
@@ -644,7 +644,7 @@ HitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 			float t = 0.0f;
 			// do bbox intersection
 			if(bbox_intersect(start, direction, note.min, note.max, t)) {
-				std::cout << "single\n";
+				//std::cout << "single\n";
 				HitInfo hits;
 				hits.note = &notes[i];
 				hits.time = t;
@@ -667,7 +667,7 @@ HitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 			float t = 0.0f;
 			// do bbox intersection
 			if(bbox_intersect(start, direction, note.min, note.max, t)) {
-				std::cout << "burst\n";
+				//std::cout << "burst\n";
 				HitInfo hits;
 				hits.note = &notes[i];
 				hits.time = t;
@@ -690,7 +690,7 @@ HitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 			// do bbox intersection
 			if(bbox_intersect(start, direction, note.min, note.max, t)) {
 				// initial click (whether it's the start or not)
-				std::cout << "hold\n";
+				//std::cout << "hold\n";
 				HitInfo hits;
 				hits.note = &notes[i];
 				hits.time = t;
@@ -698,7 +698,7 @@ HitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 			}
 		}
 		else {
-			std::cout << "Incorrect note type breaks the game." << "\n";
+			//std::cout << "Incorrect note type breaks the game." << "\n";
 			exit(1);
 		}
 	}
@@ -811,12 +811,12 @@ void PlayMode::check_hit(bool mouse_down=true) {
 			if(fabs(music_time - hits.note->hit_times[0] + real_song_offset) < valid_hit_time_delta && !holding && mouse_down) {
 				// initial click
 				hit_note(hits.note, 4);
-				std::cout << "score: " << score << ", first click hitting\n";
+				// std::cout << "score: " << score << ", first click hitting\n";
 			}
 			else if(fabs(hits.note->hit_times[1] - music_time + real_song_offset) < valid_hit_time_delta && !holding && !mouse_down) {
 				// release near the end
 				hit_note(hits.note, 4);
-				std::cout << "score: " << score << ", last click hitting\n";
+				// std::cout << "score: " << score << ", last click hitting\n";
 			}
 			else if (holding) {
 				// holding in between note
@@ -829,11 +829,11 @@ void PlayMode::check_hit(bool mouse_down=true) {
 				float dist = glm::distance(start, end);
 				if(dist - 2 < hits.time && hits.time < dist + 2) {
 					hit_note(hits.note, 5);
-					std::cout << "score: " << score << ", still hitting\n";		
+					// std::cout << "score: " << score << ", still hitting\n";		
 				}
 				else {	
 					hit_note(hits.note, 6);
-					std::cout << "score: " << score << ", missed hold\n";	
+					// std::cout << "score: " << score << ", missed hold\n";	
 				}
 				// std::cout << "dist: " << dist << ", time: " << hits.time << "\n";
 			}
@@ -1024,10 +1024,10 @@ void PlayMode::unpause_song() {
 void PlayMode::game_over(bool did_clear) {
 	hovering_text = 0;
 	if (did_clear) {
-		std::cout << "song cleared!\n";
+		// std::cout << "song cleared!\n";
 		game_state = SONGCLEAR;
 	} else {
-		std::cout << "song failed!\n";
+		// std::cout << "song failed!\n";
 		game_state = GAMEOVER;
 	}
 }
@@ -1186,9 +1186,14 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 	// point light - 0
 	glUseProgram(lit_color_texture_program->program);
 	glUniform1i(lit_color_texture_program->LIGHT_TYPE_int, 0);
-	glUniform3fv(lit_color_texture_program->LIGHT_LOCATION_vec3, 1, glm::value_ptr(camera->transform->position + glm::vec3(0.0f, 3.0f, 10.0f)));
+	// actual ?
+	// glUniform3fv(lit_color_texture_program->LIGHT_LOCATION_vec3, 1, glm::value_ptr(camera->transform->position + glm::vec3(0.0f, 3.0f, 10.0f)));
+	// glUniform3fv(lit_color_texture_program->LIGHT_DIRECTION_vec3, 1, glm::value_ptr(glm::vec3(0.0f, -0.5f, -1.0f)));
+	// glUniform3fv(lit_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(100.0f, 100.0f, 100.0f)));
+	// for demo
+	glUniform3fv(lit_color_texture_program->LIGHT_LOCATION_vec3, 1, glm::value_ptr(camera->transform->position + glm::vec3(0.0f, 3.0f, 50.0f)));
 	glUniform3fv(lit_color_texture_program->LIGHT_DIRECTION_vec3, 1, glm::value_ptr(glm::vec3(0.0f, -0.5f, -1.0f)));
-	glUniform3fv(lit_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(100.0f, 100.0f, 100.0f)));
+	glUniform3fv(lit_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(4000.0f, 4000.0f, 4000.0f)));
 	glUseProgram(0);
 
 	glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
