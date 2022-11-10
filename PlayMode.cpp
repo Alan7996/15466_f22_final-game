@@ -533,6 +533,7 @@ void PlayMode::update_notes(float elapsed) {
 
 	health = std::max(0.0f, health - elapsed / 50.0f);
 	set_health_bar();
+	if (health < EPS_F) game_over(false);
 	
 	for (int i = note_start_idx; i < note_end_idx + 1; i++) {
 		if (i >= (int)notes.size()) continue;

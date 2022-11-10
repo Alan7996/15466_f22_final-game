@@ -132,8 +132,8 @@ struct PlayMode : Mode {
 	Scene::Transform *healthbarleft_transform = nullptr;
 	Drawable healthbarright_drawable;
 	Scene::Transform *healthbarright_transform = nullptr;
-	glm::vec3 const healthbar_position = glm::vec3(-0.5f, 0.95f, -4.8f); // TODO: change this
-	glm::vec3 const healthbar_scale = glm::vec3(0.75f, 0.75f, 0.5f);
+	glm::vec3 const healthbar_position = glm::vec3(-0.35f, 0.55f, -2.8f); // TODO: change this
+	glm::vec3 const healthbar_scale = glm::vec3(0.5f, 0.5f, 0.5f);
 	glm::vec3 const healthbar_LR_scale = glm::vec3(1.0f);
 	Drawable health_drawable;
 	Scene::Transform *health_transform = nullptr;
@@ -169,7 +169,7 @@ struct PlayMode : Mode {
 	float health = 0.7f;
 	float const max_health = 1.0f;
 	float const health_right_cutoff = 0.9f;
-	float const health_left_cutoff = 0.1f;
+	float const health_left_cutoff = 0.01f;
 
 	// UI
 	std::vector<std::string> option_texts {"RESUME", "RESTART", "EXIT"};
