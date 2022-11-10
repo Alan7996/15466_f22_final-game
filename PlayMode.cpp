@@ -271,35 +271,35 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 			bg_transforms[i] = new Scene::Transform;
 			switch (i) {
 				case 0: // Up
-					bg_transforms[i]->position = glm::vec3(0, 3.0f * y_scale, 0);
+					bg_transforms[i]->position = glm::vec3(0, 5.0f * y_scale, 0);
 					bg_transforms[i]->scale = glm::vec3(bgscale, 1, bgscale);
 					break;
 				case 1:
-					bg_transforms[i]->position = glm::vec3(0, 3.0f * y_scale, -2.0f * bgscale);
+					bg_transforms[i]->position = glm::vec3(0, 5.0f * y_scale, -2.0f * bgscale);
 					bg_transforms[i]->scale = glm::vec3(bgscale, 1, bgscale);
 					break;
 				case 2: // Down
-					bg_transforms[i]->position = glm::vec3(0, -3.0f * y_scale, 0);
+					bg_transforms[i]->position = glm::vec3(0, -5.0f * y_scale, 0);
 					bg_transforms[i]->scale = glm::vec3(bgscale, 1, bgscale);
 					break;
 				case 3:
-					bg_transforms[i]->position = glm::vec3(0, -3.0f * y_scale, -2.0f * bgscale);
+					bg_transforms[i]->position = glm::vec3(0, -5.0f * y_scale, -2.0f * bgscale);
 					bg_transforms[i]->scale = glm::vec3(bgscale, 1, bgscale);
 					break;
 				case 4: // Left
-					bg_transforms[i]->position = glm::vec3(-3.0f * x_scale, 0, 0);
+					bg_transforms[i]->position = glm::vec3(-5.0f * x_scale, 0, 0);
 					bg_transforms[i]->scale = glm::vec3(1, bgscale, bgscale);
 					break;
 				case 5:
-					bg_transforms[i]->position = glm::vec3(-3.0f * x_scale, 0, -2.0f * bgscale);
+					bg_transforms[i]->position = glm::vec3(-5.0f * x_scale, 0, -2.0f * bgscale);
 					bg_transforms[i]->scale = glm::vec3(1, bgscale, bgscale);
 					break;
 				case 6: // Right
-					bg_transforms[i]->position = glm::vec3(3.0f * x_scale, 0, 0);
+					bg_transforms[i]->position = glm::vec3(5.0f * x_scale, 0, 0);
 					bg_transforms[i]->scale = glm::vec3(1, bgscale, bgscale);
 					break;
 				case 7:
-					bg_transforms[i]->position = glm::vec3(3.0f * x_scale, 0, -2.0f * bgscale);
+					bg_transforms[i]->position = glm::vec3(5.0f * x_scale, 0, -2.0f * bgscale);
 					bg_transforms[i]->scale = glm::vec3(1, bgscale, bgscale);
 					break;
 				case 8: // Center front
@@ -1167,11 +1167,24 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 	camera->aspect = float(drawable_size.x) / float(drawable_size.y);
 
 	//set up light type and position for lit_color_texture_program:
+	
+	
+	/* point light - 0
 	glUseProgram(lit_color_texture_program->program);
 	glUniform1i(lit_color_texture_program->LIGHT_TYPE_int, 0);
 	glUniform3fv(lit_color_texture_program->LIGHT_LOCATION_vec3, 1, glm::value_ptr(camera->transform->position + glm::vec3(0.0f, 0.0f, 0.0f)));
 	glUniform3fv(lit_color_texture_program->LIGHT_DIRECTION_vec3, 1, glm::value_ptr(glm::vec3(0.0f, 0.0f, -1.0f)));
 	glUniform3fv(lit_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(30.0f, 30.0f, 30.0f)));
+	glUseProgram(0);
+	*/
+	// hemisphere light - 1
+	// spot light - 2
+	// directional light - 3
+	glUseProgram(lit_color_texture_program->program);
+	glUniform1i(lit_color_texture_program->LIGHT_TYPE_int, 1);
+	glUniform3fv(lit_color_texture_program->LIGHT_LOCATION_vec3, 1, glm::value_ptr(camera->transform->position + glm::vec3(0.0f, 0.0f, 10.0f)));
+	glUniform3fv(lit_color_texture_program->LIGHT_DIRECTION_vec3, 1, glm::value_ptr(glm::vec3(0.0f, 0.0f, -1.0f)));
+	glUniform3fv(lit_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(0.1f, 0.1f, 0.1f)));
 	glUseProgram(0);
 
 	glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
