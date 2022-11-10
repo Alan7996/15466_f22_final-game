@@ -10,5 +10,5 @@ Authors to credit:
  phone-bank.blend -- Jim McCann
 
 
- spider.obj - "Huggable Spider" (https://skfb.ly/nkjih2dc0) by electronicfox is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).
  Snake.blend - "Snake 3d" (https://skfb.ly/osKLL) by Talha Riaz is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).
+ Eyeball.blend - "Eyeball" (https://skfb.ly/6ZC8A) by Blankly Rabbit Brody is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).

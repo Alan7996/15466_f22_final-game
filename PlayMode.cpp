@@ -188,9 +188,9 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 			gun_transforms[i] = new Scene::Transform;
 			gun_transforms[i]->parent = camera->transform;
 			// TODO: these numbers need tweaking once we finalize the gun model
-			gun_transforms[i]->position = glm::vec3(0.05f, -0.06f, -0.2f);
+			gun_transforms[i]->position = glm::vec3(0.07f, -0.06f, -0.2f);
 			gun_transforms[i]->scale = gun_scale;
-			gun_transforms[i]->rotation = glm::quat(0.0f, -0.5f, 1.0f, 0.1f);
+			// gun_transforms[i]->rotation = glm::quat(0.0f, -0.5f, 1.0f, 0.1f);
 			scene.drawables.emplace_back(gun_transforms[i]);
 			Scene::Drawable &d_gun = scene.drawables.back();
 			d_gun.pipeline = lit_color_texture_program_pipeline;
