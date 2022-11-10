@@ -207,7 +207,6 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 		healthbar_transform->name = "Healthbar";
 		healthbar_transform->parent = camera->transform;
 		healthbar_transform->position = healthbar_position;
-		healthbar_transform->scale = healthbar_scale;
 		scene.drawables.emplace_back(healthbar_transform);
 		Scene::Drawable &d1 = scene.drawables.back();
 		d1.pipeline = lit_color_texture_program_pipeline;
@@ -219,7 +218,6 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 		healthbarleft_transform = new Scene::Transform;
 		healthbarleft_transform->name = "HealthbarLeft";
 		healthbarleft_transform->parent = healthbar_transform;
-		healthbarleft_transform->scale = healthbar_LR_scale;
 		scene.drawables.emplace_back(healthbarleft_transform);
 		Scene::Drawable &d1l = scene.drawables.back();
 		d1l.pipeline = lit_color_texture_program_pipeline;
@@ -231,7 +229,6 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 		healthbarright_transform = new Scene::Transform;
 		healthbarright_transform->name = "HealthbarRight";
 		healthbarright_transform->parent = healthbar_transform;
-		healthbarright_transform->scale = healthbar_LR_scale;
 		scene.drawables.emplace_back(healthbarright_transform);
 		Scene::Drawable &d1r = scene.drawables.back();
 		d1r.pipeline = lit_color_texture_program_pipeline;
@@ -243,7 +240,6 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 		health_transform = new Scene::Transform;
 		health_transform->name = "Health";
 		health_transform->parent = healthbar_transform;
-		set_health_bar();
 		scene.drawables.emplace_back(health_transform);
 		Scene::Drawable &d0 = scene.drawables.back();
 		d0.pipeline = lit_color_texture_program_pipeline;
@@ -255,7 +251,6 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 		border_transform = new Scene::Transform;
 		border_transform->name = "Border";
 		border_transform->position = glm::vec3(0.0f, 0.0f, border_depth);
-		border_transform->scale = glm::vec3(x_scale, y_scale, 0.01f);
 		scene.drawables.emplace_back(border_transform);
 		Scene::Drawable &d2 = scene.drawables.back();
 		d2.pipeline = lit_color_texture_program_pipeline;
@@ -919,6 +914,7 @@ void PlayMode::to_menu() {
 	healthbar_transform->scale = glm::vec3();
 	healthbarleft_transform->scale = glm::vec3();
 	healthbarright_transform->scale = glm::vec3();
+	border_transform->scale = glm::vec3();
 
 	reset_song();
 	reset_cam();
@@ -964,6 +960,8 @@ void PlayMode::start_song(int idx, bool restart) {
 	healthbar_transform->scale = healthbar_scale;
 	healthbarleft_transform->scale = healthbar_LR_scale;
 	healthbarright_transform->scale = healthbar_LR_scale;
+	border_transform->scale = glm::vec3(x_scale, y_scale, z_scale);
+
 	set_health_bar();
 
 	change_gun(0, 0);
@@ -1135,12 +1133,12 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 		cam.elevation /= 2.0f * 3.1415926f;
 		cam.elevation = std::clamp(cam.elevation - std::round(cam.elevation), 0.2f, 0.3f);
 		cam.elevation *= 2.0f * 3.1415926f;
-		
+
 		//update camera aspect ratio for drawable:
 		camera->transform->rotation =
 			normalize(glm::angleAxis(cam.azimuth, glm::vec3(0.0f, 1.0f, 0.0f))
-			* glm::angleAxis(0.5f * 3.1415926f + -cam.elevation, glm::vec3(1.0f, 0.0f, 0.0f)))
-		;
+			* glm::angleAxis(0.5f * 3.1415926f + -cam.elevation, glm::vec3(1.0f, 0.0f, 0.0f)));
+
 		camera->transform->scale = glm::vec3(1.0f);
 		if (holding) {
 			check_hit();

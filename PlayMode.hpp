@@ -149,6 +149,7 @@ struct PlayMode : Mode {
 	Scene::Transform *border_transform = nullptr;
 	float x_scale = 1.0f;
 	float y_scale = 1.0f;
+	float z_scale = 0.01f;
 
 	// music & SFX
 	bool has_started = false;
