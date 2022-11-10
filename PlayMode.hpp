@@ -141,7 +141,7 @@ struct PlayMode : Mode {
 	// gun information
 	Drawable gun_drawable;
 	std::vector<Scene::Transform *> gun_transforms;
-	glm::vec3 const gun_scale = glm::vec3(0.05f, 0.05f, 0.05f);
+	glm::vec3 const gun_scale = glm::vec3(0.03f, 0.03f, 0.03f);
 	int gun_mode = 0; // 0 = single, 1 = burst, 2 = hold
 
 	// border information
@@ -179,7 +179,7 @@ struct PlayMode : Mode {
 	// settings
 	// TODO : should include some scaling variable to allow for different note speed settings to automatically affect these
 	float init_note_depth = -20.0f;
-	float border_depth = -0.0f;
+	float border_depth = 0.0f;
 	float max_depth = 10.0f;
 	
 	float note_approach_time = 4.0f; // time between when the note shows up and hit time

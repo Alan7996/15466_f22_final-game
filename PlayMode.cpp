@@ -191,7 +191,7 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 			gun_transforms[i] = new Scene::Transform;
 			gun_transforms[i]->parent = camera->transform;
 			// TODO: these numbers need tweaking once we finalize the gun model
-			gun_transforms[i]->position = glm::vec3(0.07f, -0.06f, -0.3f);
+			gun_transforms[i]->position = glm::vec3(0.07f, -0.06f, -0.25f);
 			gun_transforms[i]->scale = glm::vec3();
 			// gun_transforms[i]->rotation = glm::quat(0.0f, -0.5f, 1.0f, 0.1f);
 			scene.drawables.emplace_back(gun_transforms[i]);
@@ -254,7 +254,7 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 
 		border_transform = new Scene::Transform;
 		border_transform->name = "Border";
-		border_transform->position = glm::vec3(0.0f, 0.0f, border_depth);
+		border_transform->position = glm::vec3(0.0f, 0.0f, 2.0f);
 		border_transform->scale = glm::vec3(x_scale, y_scale, 0.01f);
 		scene.drawables.emplace_back(border_transform);
 		Scene::Drawable &d2 = scene.drawables.back();
