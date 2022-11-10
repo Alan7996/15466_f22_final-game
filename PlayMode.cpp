@@ -1119,12 +1119,13 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 		cam.elevation -= mouse_sens * delta.y;
 
 		cam.azimuth /= 2.0f * 3.1415926f;
-		cam.azimuth -= std::round(cam.azimuth);
+		cam.azimuth = std::clamp(cam.azimuth - std::round(cam.azimuth), -0.1f, 0.1f);
 		cam.azimuth *= 2.0f * 3.1415926f;
 
 		cam.elevation /= 2.0f * 3.1415926f;
-		cam.elevation -= std::round(cam.elevation);
+		cam.elevation = std::clamp(cam.elevation - std::round(cam.elevation), 0.2f, 0.3f);
 		cam.elevation *= 2.0f * 3.1415926f;
+		
 		//update camera aspect ratio for drawable:
 		camera->transform->rotation =
 			normalize(glm::angleAxis(cam.azimuth, glm::vec3(0.0f, 1.0f, 0.0f))
