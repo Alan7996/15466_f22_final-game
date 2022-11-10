@@ -132,8 +132,9 @@ struct PlayMode : Mode {
 	Scene::Transform *healthbarleft_transform = nullptr;
 	Drawable healthbarright_drawable;
 	Scene::Transform *healthbarright_transform = nullptr;
-	glm::vec3 const healthbar_position = glm::vec3(-0.5f, 0.75f, -4.8f); // TODO: change this
+	glm::vec3 const healthbar_position = glm::vec3(-0.5f, 0.95f, -4.8f); // TODO: change this
 	glm::vec3 const healthbar_scale = glm::vec3(0.75f, 0.75f, 0.5f);
+	glm::vec3 const healthbar_LR_scale = glm::vec3(1.0f);
 	Drawable health_drawable;
 	Scene::Transform *health_transform = nullptr;
 
