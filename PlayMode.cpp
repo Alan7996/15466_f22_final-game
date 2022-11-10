@@ -1166,7 +1166,7 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 		cam.elevation -= mouse_sens * delta.y;
 
 		cam.azimuth /= 2.0f * 3.1415926f;
-		cam.azimuth = std::clamp(cam.azimuth - std::round(cam.azimuth), -0.1f, 0.1f);
+		cam.azimuth = std::clamp(cam.azimuth - std::round(cam.azimuth), -0.05f, 0.05f);
 		cam.azimuth *= 2.0f * 3.1415926f;
 
 		cam.elevation /= 2.0f * 3.1415926f;
