@@ -160,6 +160,9 @@ struct PlayMode : Mode {
 	Sound::Sample note_hit_sound;
 	Sound::Sample note_miss_sound;
 
+	//background music
+	std::shared_ptr< Sound::PlayingSample > bg_loop;
+	
 	// gameplay
 	int note_start_idx = 0;
 	int note_end_idx = 0;

@@ -76,6 +76,10 @@ Load< Sound::Sample > load_song_tutorial(LoadTagDefault, []() -> Sound::Sample c
 	return new Sound::Sample(data_path("Tutorial.wav"));
 });
 
+Load< Sound::Sample > load_song_menu(LoadTagDefault, []() -> Sound::Sample const * {
+	return new Sound::Sample(data_path("Menu_background.wav"));
+});
+
 /*
 	Constructor for PlayMode
 	Initialization of the game
@@ -933,6 +937,9 @@ void PlayMode::to_menu() {
 
 	// stop currently playing song
 	if (active_song) active_song->stop();
+	bg_loop = Sound::loop(*load_song_menu);
+	bg_loop->set_volume(0.0f, 0.0f);
+	bg_loop->set_volume(0.5f, 10.0f);
 }
 
 void PlayMode::set_health_bar() {
@@ -958,6 +965,8 @@ void PlayMode::set_health_bar() {
 */
 void PlayMode::start_song(int idx, bool restart) {
 	if (has_started) return;
+
+	if (bg_loop) bg_loop->stop();
 
 	song_cleared = false;
 	holding = false;

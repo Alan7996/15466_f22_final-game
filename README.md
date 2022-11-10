@@ -15,6 +15,7 @@ How To Play:
 Sources: (TODO: list a source URL for any assets you did not create yourself. Make sure you have a license for the asset.)
 Note_hit.wav : https://freesound.org/people/Sorinious_Genious/sounds/561089/
 Note_miss.wav : https://freesound.org/people/Zuckbeats219/sounds/520737/
+Menu_background.wav : https://freesound.org/people/LittleRobotSoundFactory/sounds/270387/
 
 This game was built with [NEST](NEST.md).
 
