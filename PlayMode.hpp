@@ -78,6 +78,7 @@ struct PlayMode : Mode {
 	bool bbox_intersect(glm::vec3 pos, glm::vec3 dir, glm::vec3 min, glm::vec3 max, float &t);
 	HitInfo trace_ray(glm::vec3 pos, glm::vec3 dir);
 	void check_hit(bool mouse_down);
+	void set_combo(int diff);
 	void hit_note(NoteInfo* note, int hit_status);
 
 	void change_gun(int idx_change, int manual_idx);
@@ -165,11 +166,15 @@ struct PlayMode : Mode {
 
 	int score = 0;
 	int combo = 0;
+	int max_combo = 0;
 	int multiplier = 1;
 	float health = 0.7f;
 	float const max_health = 1.0f;
-	float const health_right_cutoff = 0.9f;
+	float const health_right_cutoff = 0.97f;
 	float const health_left_cutoff = 0.01f;
+
+	bool song_cleared = false;
+	std::chrono::time_point<std::chrono::high_resolution_clock> song_clear_time;
 
 	// UI
 	std::vector<std::string> option_texts {"RESUME", "RESTART", "EXIT"};

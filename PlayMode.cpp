@@ -547,7 +547,10 @@ void PlayMode::update_notes(float elapsed) {
 					note.note_transforms[j]->scale = glm::vec3(0.0f, 0.0f, 0.0f);
 					note_start_idx += 1;
 
-					if (note_start_idx == (int)notes.size()) game_over(true);
+					if (note_start_idx == (int)notes.size()) {
+						song_cleared = true;
+						song_clear_time = std::chrono::high_resolution_clock::now();
+					}
 				}
 				else {
 					// move the note
@@ -706,16 +709,21 @@ HitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 	return HitInfo();
 }
 
+void PlayMode::set_combo(int diff) {
+	combo += diff;
+	multiplier = combo / 25 + 1;
+	if (combo > max_combo) max_combo = combo;
+}
+
 /*
 	Update function to a note, score / combo and health
 */
 void PlayMode::hit_note(NoteInfo* note, int hit_status) {
 	if (hit_status == -1) {
 		Sound::play(note_miss_sound);
-		health = std::max(0.0f, health - 0.1f);
-		combo = 0;
-		multiplier = 1;
+		set_combo(-combo);
 		set_health_bar();
+		health = std::max(0.0f, health - 0.1f);
 		if (health < EPS_F) game_over(false);
 		return;
 	}
@@ -727,53 +735,46 @@ void PlayMode::hit_note(NoteInfo* note, int hit_status) {
 		case 0:
 			// bad hit, same as miss
 			Sound::play(note_miss_sound);
-			combo = 0;
-			multiplier = 1;
+			set_combo(-combo);
 			health = std::max(0.0f, health - 0.1f);
 			if (health < EPS_F) game_over(false);
 			break;
 		case 1:
 			// ok hit
 			Sound::play(note_hit_sound);
-			score += 50;
-			combo += 1;
-			multiplier = combo / 25 + 1;
+			score += 50 * multiplier;
+			set_combo(1);
 			health = std::min(max_health, health + 0.03f);
 			break;
 		case 2:
 			// good hit
 			Sound::play(note_hit_sound);
-			score += 100;
-			combo += 1;
-			multiplier = combo / 25 + 1;
+			score += 100 * multiplier;
+			set_combo(1);
 			health = std::min(max_health, health + 0.03f);
 			break;
 		case 3:
 			// wrong gun hit
 			Sound::play(note_miss_sound);
-			score += 10;
-			combo = 0;
-			multiplier = 1;
+			score += 10 * multiplier;
+			set_combo(-combo);
 			break;
 		case 4:
 			// hold begin and end
 			Sound::play(note_hit_sound);
-			score += 50;
-			combo += 1;
-			multiplier = combo / 25 + 1;
+			score += 10 * multiplier;
+			set_combo(1);
 			health = std::min(max_health, health + 0.03f);
 			break;
 		case 5:
 			// hold during success
-			score += 10;
-			combo += 1;
-			multiplier = combo / 25 + 1;
+			score += 1 * multiplier;
+			set_combo(1);
 			health = std::min(max_health, health + 0.003f);
 			break;
 		case 6:
 			// hold during fail
-			combo = 0;
-			multiplier = 1;
+			set_combo(-combo);
 			health = std::max(0.0f, health - 0.003f);
 			break;
 	}
@@ -952,6 +953,8 @@ void PlayMode::set_health_bar() {
 void PlayMode::start_song(int idx, bool restart) {
 	if (has_started) return;
 
+	song_cleared = false;
+
 	reset_cam();
 	SDL_SetRelativeMouseMode(SDL_TRUE);
 
@@ -959,6 +962,7 @@ void PlayMode::start_song(int idx, bool restart) {
 	note_end_idx = 0;
 	score = 0;
 	combo = 0;
+	max_combo = 0;
 	multiplier = 1;
 	health = 0.7f;
 
@@ -1022,6 +1026,9 @@ void PlayMode::unpause_song() {
 		Should be called when either health reaches zero or if note_start_idx is equal to the end of the vector 
 */
 void PlayMode::game_over(bool did_clear) {
+	if (active_song) active_song->stop();
+	reset_cam();
+
 	hovering_text = 0;
 	if (did_clear) {
 		// std::cout << "song cleared!\n";
@@ -1164,6 +1171,10 @@ void PlayMode::update(float elapsed) {
 	if (game_state == PLAYING) {
 		update_bg(elapsed);
 		update_notes(elapsed);
+
+		if (song_cleared && std::chrono::duration<float>(std::chrono::high_resolution_clock::now() - song_clear_time).count() > 3.0f) {
+			game_over(true);
+		}
 	}
 }
 
@@ -1291,6 +1302,20 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 					glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 					glm::u8vec4(0xff, 0xff, 0xff, 0x00));
 			}
+			lines.draw_text("SONG CLEARED!",
+				glm::vec3(-0.3f, 0.5f, 0.0f),
+				glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+				glm::u8vec4(0xff, 0xff, 0xff, 0x00));
+
+			lines.draw_text("SCORE: " + std::to_string(score),
+				glm::vec3(-0.3f, 0.2f, 0.0f),
+				glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+				glm::u8vec4(0xff, 0xff, 0xff, 0x00));
+
+			lines.draw_text("MAX COMBO: " + std::to_string(max_combo),
+				glm::vec3(-0.3f, 0.0f, 0.0f),
+				glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+				glm::u8vec4(0xff, 0xff, 0xff, 0x00));
 		} else if (game_state == GAMEOVER) {
 			for (int i = hovering_text - 2; i < hovering_text + 3; i++) {
 				if (i < 0 || i >= (int)songover_texts.size()) continue;
@@ -1303,6 +1328,10 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 					glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 					glm::u8vec4(0xff, 0xff, 0xff, 0x00));
 			}
+			lines.draw_text("LEVEL FAILED...",
+				glm::vec3(-0.3f, 0.5f, 0.0f),
+				glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+				glm::u8vec4(0xff, 0xff, 0xff, 0x00));
 		}
 	}
 	GL_ERRORS();
