@@ -188,6 +188,7 @@ struct PlayMode : Mode {
 	// settings
 	// TODO : should include some scaling variable to allow for different note speed settings to automatically affect these
 	float init_note_depth = -20.0f;
+	// TODO : this is different from the border that is being visually displayed?
 	float border_depth = 0.0f;
 	float max_depth = 10.0f;
 	

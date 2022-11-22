@@ -1,3 +1,9 @@
+// TODO : figure out why border is set to 2.5 (change lines ~260)
+// TODO : add multiple lights (change lines ~1200)
+// TODO : add background textures (change litcolortextureprogram)
+// TODO : fix intersection code for hold (I think burst is fine for now)
+// TODO : currently, scaling and positioning hold incorrectly (might also be true for the burst and single)
+
 #include "PlayMode.hpp"
 
 #include "LitColorTextureProgram.hpp"
@@ -538,7 +544,7 @@ void PlayMode::update_notes(float elapsed) {
 	health = std::max(0.0f, health - elapsed / 50.0f);
 	set_health_bar();
 	if (health < EPS_F) game_over(false);
-	
+	// std::cout << note_start_idx << " " << note_end_idx + 1 << "\n";
 	for (int i = note_start_idx; i < note_end_idx + 1; i++) {
 		if (i >= (int)notes.size()) continue;
 		auto &note = notes[i];
@@ -573,8 +579,9 @@ void PlayMode::update_notes(float elapsed) {
 						}
 						else {
 							note.note_transforms[j]->scale = note.scale;
-							// note.note_transforms[j]->rotation = glm::quat(0.0, -1.0f, 0.0f, -0.7f); // TODO: WTF
 						}
+						std::cout << note.note_transforms[j]->position.x << " " << note.note_transforms[j]->position.y << " " << note.note_transforms[j]->position.z << "\n";
+						std::cout << note.note_transforms[j]->scale.x << " " << note.note_transforms[j]->scale.y << " " << note.note_transforms[j]->scale.z << "\n";
 						note_end_idx += 1;
 					}
 				}
@@ -826,12 +833,15 @@ void PlayMode::check_hit(bool mouse_down=true) {
 			else if (holding) {
 				// holding in between note
 				// TODO: fix the math on the next line
+				// want to do linear interpolation between the hit_times depending on how fast the note is approaching
 				glm::vec2 coord = get_coords(hits.note->dir, hits.note->coord_begin + (music_time - hits.note->hit_times[0] + real_song_offset) * (hits.note->coord_end - hits.note->coord_begin) * note_approach_time / (hits.note->hit_times[1] - hits.note->hit_times[0]));
+				
 				glm::mat4 inverse = hits.note->note_transforms[0]->make_world_to_local();
 				glm::vec3 start = glm::vec3(inverse * glm::vec4(camera->transform->position, 1.0f));
-				// std::cout << coord.first << " " << coord.second << " " << music_time << " " << hits.note->hit_times[0] + real_song_offset << "\n";
+				std::cout << coord[0] << " " << coord[1] << " " << music_time << " " << hits.note->hit_times[0] + real_song_offset << "\n";
 				glm::vec3 end = glm::vec3(inverse * glm::vec4(coord.x, coord.y, border_depth, 1.0f));
 				float dist = glm::distance(start, end);
+				std::cout << dist << " " << hits.time << "\n";
 				if(gun_mode == 2 && dist - 2 < hits.time && hits.time < dist + 2) {
 					hit_note(hits.note, 5);
 					// std::cout << "score: " << score << ", still hitting\n";		
@@ -904,7 +914,7 @@ void PlayMode::reset_song() {
 		note.been_hit = false;
 		note.is_active = false;
 		for (uint64_t i = 0; i < note.note_transforms.size(); i++) {
-			note.note_transforms[i]->position = glm::vec3(note.note_transforms[i]->position.x, note.note_transforms[i]->position.y, init_note_depth);
+			note.note_transforms[i]->position.z = init_note_depth;
 			note.note_transforms[i]->scale = glm::vec3(0.0f, 0.0f, 0.0f);
 		}
 	}
@@ -1008,11 +1018,10 @@ void PlayMode::start_song(int idx, bool restart) {
 
 /*
 	Function that restarts a song (and reinitializes all variables) when we choose to restart a level
-		restart_song should only be called when going from PLAYING -> PAUSED -> select RESTARTg
+		restart_song should only be called when going from PLAYING -> PAUSED -> select RESTART
 */
 void PlayMode::restart_song() {
 	reset_song();
-
 	has_started = false;
 	start_song(chosen_song, true);
 }
@@ -1221,17 +1230,44 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 	camera->aspect = float(drawable_size.x) / float(drawable_size.y);
 
 	//set up light type and position for lit_color_texture_program:
+	// from forward lighting class demo
+	//compute light uniforms:
+	uint32_t lights = uint32_t(2);
+
+	std::vector< int32_t > light_type; light_type.reserve(lights);
+	std::vector< glm::vec3 > light_location; light_location.reserve(lights);
+	std::vector< glm::vec3 > light_direction; light_direction.reserve(lights);
+	std::vector< glm::vec3 > light_energy; light_energy.reserve(lights);
+	std::vector< float > light_cutoff; light_cutoff.reserve(lights);
+
+	light_location.emplace_back(camera->transform->position + glm::vec3(0.0f, 3.0f, 0.0f));
+	light_direction.emplace_back(glm::vec3(0.0f, -0.5f, -1.0f));
+	light_energy.emplace_back(glm::vec3(100.0f, 100.0f, 100.0f));
+	light_type.emplace_back(0);
+	light_cutoff.emplace_back(1.0f);
+
+	light_location.emplace_back(camera->transform->position + glm::vec3(0.0f, 3.0f, 50.0f));
+	light_direction.emplace_back(glm::vec3(0.0f, 0.0f, -1.0f));
+	light_energy.emplace_back(glm::vec3(10000.0f, 10000.0f, 10000.0f));
+	light_type.emplace_back(2);
+	light_cutoff.emplace_back(1.0f);
+
 	// point light - 0
 	glUseProgram(lit_color_texture_program->program);
-	glUniform1i(lit_color_texture_program->LIGHT_TYPE_int, 0);
+	// glUniform1i(lit_color_texture_program->LIGHT_TYPE_int, 0);
 	// actual ?
 	// glUniform3fv(lit_color_texture_program->LIGHT_LOCATION_vec3, 1, glm::value_ptr(camera->transform->position + glm::vec3(0.0f, 3.0f, 10.0f)));
 	// glUniform3fv(lit_color_texture_program->LIGHT_DIRECTION_vec3, 1, glm::value_ptr(glm::vec3(0.0f, -0.5f, -1.0f)));
 	// glUniform3fv(lit_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(100.0f, 100.0f, 100.0f)));
 	// for demo
-	glUniform3fv(lit_color_texture_program->LIGHT_LOCATION_vec3, 1, glm::value_ptr(camera->transform->position + glm::vec3(0.0f, 3.0f, 50.0f)));
-	glUniform3fv(lit_color_texture_program->LIGHT_DIRECTION_vec3, 1, glm::value_ptr(glm::vec3(0.0f, -0.5f, -1.0f)));
-	glUniform3fv(lit_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(4000.0f, 4000.0f, 4000.0f)));
+	// glUniform3fv(lit_color_texture_program->LIGHT_LOCATION_vec3, 1, glm::value_ptr(camera->transform->position + glm::vec3(0.0f, 3.0f, 50.0f)));
+	// glUniform3fv(lit_color_texture_program->LIGHT_DIRECTION_vec3, 1, glm::value_ptr(glm::vec3(0.0f, -0.5f, -1.0f)));
+	// glUniform3fv(lit_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(4000.0f, 4000.0f, 4000.0f)));
+	glUniform1iv(lit_color_texture_program->LIGHT_TYPE_int, lights, light_type.data());
+	glUniform3fv(lit_color_texture_program->LIGHT_LOCATION_vec3, lights, glm::value_ptr(light_location[0]));
+	glUniform3fv(lit_color_texture_program->LIGHT_DIRECTION_vec3, lights, glm::value_ptr(light_direction[0]));
+	glUniform3fv(lit_color_texture_program->LIGHT_ENERGY_vec3, lights, glm::value_ptr(light_energy[0]));
+	glUniform1fv(lit_color_texture_program->LIGHT_CUTOFF_float, lights, light_cutoff.data());
 	glUseProgram(0);
 
 	glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
