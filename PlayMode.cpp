@@ -910,14 +910,16 @@ void PlayMode::change_gun(int idx_change, int manual_idx=-1) {
 void PlayMode::reset_song() {
 	// reset loaded assets
 	if (active_song) active_song->stop();
-	for (auto &note: notes) {
-		note.been_hit = false;
-		note.is_active = false;
-		for (uint64_t i = 0; i < note.note_transforms.size(); i++) {
-			note.note_transforms[i]->position.z = init_note_depth;
-			note.note_transforms[i]->scale = glm::vec3(0.0f, 0.0f, 0.0f);
-		}
-	}
+	scene.drawables.erase(std::prev(scene.drawables.end(), notes.size()), scene.drawables.end());
+	// read_notes(song_list[chosen_song].first);
+	// for (auto &note: notes) {
+	// 	note.been_hit = false;
+	// 	note.is_active = false;
+	// 	for (uint64_t i = 0; i < note.note_transforms.size(); i++) {
+	// 		note.note_transforms[i]->position.z = init_note_depth;
+	// 		note.note_transforms[i]->scale = glm::vec3(0.0f, 0.0f, 0.0f);
+	// 	}
+	// }
 }
 
 /*
@@ -942,7 +944,7 @@ void PlayMode::to_menu() {
 	healthbarright_transform->scale = glm::vec3();
 	border_transform->scale = glm::vec3();
 
-	reset_song();
+	if (notes.size() >= 1) reset_song();
 	reset_cam();
 
 	// stop currently playing song
@@ -1012,7 +1014,9 @@ void PlayMode::start_song(int idx, bool restart) {
 	music_start_time = std::chrono::high_resolution_clock::now(); // might want to reconsider if we want buffer time between starting the song and loading the level
 
 	// choose the song based on index
-	if (!restart) read_notes(song_list[idx].first);
+	// if (!restart) {
+		read_notes(song_list[idx].first);
+	// }
 	active_song = Sound::play(song_list[idx].second);
 }
 
