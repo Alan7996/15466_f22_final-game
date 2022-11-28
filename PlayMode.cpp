@@ -7,6 +7,7 @@
 #include "PlayMode.hpp"
 
 #include "LitColorTextureProgram.hpp"
+#include "load_save_png.hpp"
 
 #include "DrawLines.hpp"
 #include "Mesh.hpp"
@@ -98,6 +99,48 @@ Load< Sound::Sample > load_song_menu(LoadTagDefault, []() -> Sound::Sample const
 	return new Sound::Sample(data_path("Menu_background.wav"));
 });
 
+// From: https://github.com/ixchow/15-466-f18-base3/blob/586f23cf0bbaf80e8e70277442c4e0de7e7612f5/GameMode.cpp#L95-L113
+GLuint load_texture(std::string const &filename) {
+	glm::uvec2 size;
+	std::vector< glm::u8vec4 > data;
+	load_png(filename, &size, &data, LowerLeftOrigin);
+
+	GLuint tex = 0;
+	glGenTextures(1, &tex);
+	glBindTexture(GL_TEXTURE_2D, tex);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, size.x, size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, data.data());
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+	glGenerateMipmap(GL_TEXTURE_2D);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	GL_ERRORS();
+
+	return tex;
+}
+
+// Based on works by Hunan Express team (Dakota Hernandez)
+Load< GLuint > load_tex_wall_left(LoadTagDefault, [](){
+	return new GLuint(load_texture(data_path("textures/wall_left.png")));
+});
+
+Load< GLuint > load_tex_wall_right(LoadTagDefault, [](){
+	return new GLuint(load_texture(data_path("textures/wall_right.png")));
+});
+
+Load< GLuint > load_tex_wall_up(LoadTagDefault, [](){
+	return new GLuint(load_texture(data_path("textures/wall_up.png")));
+});
+
+Load< GLuint > load_tex_wall_down(LoadTagDefault, [](){
+	return new GLuint(load_texture(data_path("textures/wall_down.png")));
+});
+
+Load< GLuint > load_tex_wall_center(LoadTagDefault, [](){
+	return new GLuint(load_texture(data_path("textures/wall_center.png")));
+});
+
 /*
 	Constructor for PlayMode
 	Initialization of the game
@@ -120,7 +163,7 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 	camera = &scene.cameras.front();
 
 	std::vector<Drawable> default_skin(15);
-	std::vector<Drawable> backgrounds(10);
+	std::vector<Drawable> backgrounds(3);
 	std::vector<Drawable> gun_drawables(3);
 
 	for (auto &d : scene.drawables) {
@@ -163,44 +206,17 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 			health_drawable.start = d.pipeline.start;
 			health_drawable.count = d.pipeline.count;
 		} else if (d.transform->name == "BGCenter") {
-			backgrounds[8].type = d.pipeline.type;
-			backgrounds[8].start = d.pipeline.start;
-			backgrounds[8].count = d.pipeline.count;
-			backgrounds[9].type = d.pipeline.type;
-			backgrounds[9].start = d.pipeline.start;
-			backgrounds[9].count = d.pipeline.count;
-		} else if (d.transform->name == "BGUp") {
-			backgrounds[0].type = d.pipeline.type;
-			backgrounds[0].start = d.pipeline.start;
-			backgrounds[0].count = d.pipeline.count;
-		} else if (d.transform->name == "BGUp2") {
-			backgrounds[1].type = d.pipeline.type;
-			backgrounds[1].start = d.pipeline.start;
-			backgrounds[1].count = d.pipeline.count;
-		} else if (d.transform->name == "BGDown") {
 			backgrounds[2].type = d.pipeline.type;
 			backgrounds[2].start = d.pipeline.start;
 			backgrounds[2].count = d.pipeline.count;
-		} else if (d.transform->name == "BGDown2") {
-			backgrounds[3].type = d.pipeline.type;
-			backgrounds[3].start = d.pipeline.start;
-			backgrounds[3].count = d.pipeline.count;
+		} else if (d.transform->name == "BGDown") {
+			backgrounds[0].type = d.pipeline.type;
+			backgrounds[0].start = d.pipeline.start;
+			backgrounds[0].count = d.pipeline.count;
 		} else if (d.transform->name == "BGLeft") {
-			backgrounds[4].type = d.pipeline.type;
-			backgrounds[4].start = d.pipeline.start;
-			backgrounds[4].count = d.pipeline.count;
-		} else if (d.transform->name == "BGLeft2") {
-			backgrounds[5].type = d.pipeline.type;
-			backgrounds[5].start = d.pipeline.start;
-			backgrounds[5].count = d.pipeline.count;
-		} else if (d.transform->name == "BGRight") {
-			backgrounds[6].type = d.pipeline.type;
-			backgrounds[6].start = d.pipeline.start;
-			backgrounds[6].count = d.pipeline.count;
-		} else if (d.transform->name == "BGRight2") {
-			backgrounds[7].type = d.pipeline.type;
-			backgrounds[7].start = d.pipeline.start;
-			backgrounds[7].count = d.pipeline.count;
+			backgrounds[1].type = d.pipeline.type;
+			backgrounds[1].start = d.pipeline.start;
+			backgrounds[1].count = d.pipeline.count;
 		}
 	}
 
@@ -282,60 +298,85 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 		d2.pipeline.start = border_drawable.start;
 		d2.pipeline.count = border_drawable.count;
 
-		bg_transforms.resize(10);
+		int num_walls = 2;
+
+		bg_transforms.resize(4 * num_walls + 2);
 		bgscale = abs(init_note_depth - max_depth);
 
-		for (int i = 0; i < 10; i++) {
+		for (int i = 0; i < bg_transforms.size(); i++) {
+			GLuint tex_ind = 0;
+
 			bg_transforms[i] = new Scene::Transform;
 			switch (i) {
 				case 0: // Up
 					bg_transforms[i]->position = glm::vec3(0, 5.0f * y_scale, 0);
-					bg_transforms[i]->scale = glm::vec3(bgscale, 1, bgscale);
+					bg_transforms[i]->rotation = glm::quat(0.0f, 0.0f, 1.0f, 0.0f) * glm::quat(0.0f, 1.0f, 0.0f, 0.0f);
+					bg_transforms[i]->scale = glm::vec3(5.0f * x_scale, 1, bgscale);
+					tex_ind = *load_tex_wall_up;
 					break;
 				case 1:
 					bg_transforms[i]->position = glm::vec3(0, 5.0f * y_scale, -2.0f * bgscale);
-					bg_transforms[i]->scale = glm::vec3(bgscale, 1, bgscale);
+					bg_transforms[i]->rotation = glm::quat(0.0f, 0.0f, 1.0f, 0.0f) * glm::quat(0.0f, 1.0f, 0.0f, 0.0f);
+					bg_transforms[i]->scale = glm::vec3(5.0f * x_scale, 1, bgscale);
+					tex_ind = *load_tex_wall_up;
 					break;
 				case 2: // Down
 					bg_transforms[i]->position = glm::vec3(0, -5.0f * y_scale, 0);
-					bg_transforms[i]->scale = glm::vec3(bgscale, 1, bgscale);
+					bg_transforms[i]->scale = glm::vec3(5.0f * x_scale, 1, bgscale);
+					tex_ind = *load_tex_wall_down;
 					break;
 				case 3:
 					bg_transforms[i]->position = glm::vec3(0, -5.0f * y_scale, -2.0f * bgscale);
-					bg_transforms[i]->scale = glm::vec3(bgscale, 1, bgscale);
+					bg_transforms[i]->scale = glm::vec3(5.0f * x_scale, 1, bgscale);
+					tex_ind = *load_tex_wall_down;
 					break;
 				case 4: // Left
 					bg_transforms[i]->position = glm::vec3(-5.0f * x_scale, 0, 0);
-					bg_transforms[i]->scale = glm::vec3(1, bgscale, bgscale);
+					bg_transforms[i]->scale = glm::vec3(1, 5.0f * y_scale, bgscale);
+					tex_ind = *load_tex_wall_left;
 					break;
 				case 5:
 					bg_transforms[i]->position = glm::vec3(-5.0f * x_scale, 0, -2.0f * bgscale);
-					bg_transforms[i]->scale = glm::vec3(1, bgscale, bgscale);
+					bg_transforms[i]->scale = glm::vec3(1, 5.0f * y_scale, bgscale);
+					tex_ind = *load_tex_wall_left;
 					break;
 				case 6: // Right
 					bg_transforms[i]->position = glm::vec3(5.0f * x_scale, 0, 0);
-					bg_transforms[i]->scale = glm::vec3(1, bgscale, bgscale);
+					bg_transforms[i]->rotation = glm::quat(0.0f, 0.0f, 1.0f, 0.0f) * glm::quat(0.0f, 1.0f, 0.0f, 0.0f);
+					bg_transforms[i]->scale = glm::vec3(1, 5.0f * y_scale, bgscale);
+					tex_ind = *load_tex_wall_right;
 					break;
 				case 7:
 					bg_transforms[i]->position = glm::vec3(5.0f * x_scale, 0, -2.0f * bgscale);
-					bg_transforms[i]->scale = glm::vec3(1, bgscale, bgscale);
+					bg_transforms[i]->rotation = glm::quat(0.0f, 0.0f, 1.0f, 0.0f) * glm::quat(0.0f, 1.0f, 0.0f, 0.0f);
+					bg_transforms[i]->scale = glm::vec3(1, 5.0f * y_scale, bgscale);
+					tex_ind = *load_tex_wall_right;
 					break;
 				case 8: // Center front
 					bg_transforms[i]->position = glm::vec3(0, 0, -bgscale);
 					bg_transforms[i]->scale = glm::vec3(bgscale, bgscale, 1);
+					tex_ind = *load_tex_wall_center;
 					break;
 				case 9: // Center back
 					bg_transforms[i]->position = glm::vec3(0, 0, bgscale);
-					bg_transforms[i]->scale = glm::vec3(bgscale, bgscale, 1);
+					bg_transforms[i]->scale = glm::vec3(5.0f * x_scale, 5.0f * y_scale, 1);
+					tex_ind = *load_tex_wall_center;
 					break;
 			}
 			scene.drawables.emplace_back(bg_transforms[i]);
 			Scene::Drawable &d_bg = scene.drawables.back();
 			d_bg.pipeline = lit_color_texture_program_pipeline;
 			d_bg.pipeline.vao = main_meshes_for_lit_color_texture_program;
-			d_bg.pipeline.type = backgrounds[i].type;
-			d_bg.pipeline.start = backgrounds[i].start;
-			d_bg.pipeline.count = backgrounds[i].count;
+			int ind = 0;
+			if (i >= 2 * num_walls && i < 4 * num_walls) {
+				ind = 1;
+			} else if (i >= 4 * num_walls) {
+				ind = 2;
+			}
+			d_bg.pipeline.type = backgrounds[ind].type;
+			d_bg.pipeline.start = backgrounds[ind].start;
+			d_bg.pipeline.count = backgrounds[ind].count;
+			d_bg.pipeline.textures[0].texture = tex_ind;
 		}
 
 		// would be nice to count the number of songs / know their names by reading through the file system
@@ -488,7 +529,7 @@ void PlayMode::read_notes(std::string song_name) {
 					transform->rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
 				}
 				else if (dir == "right") {
-					transform->rotation = glm::quat(0.0f, 0.0f, 1.0f, 0.0f) * glm::quat(0.0f, 1.0f, 0.0f, 0.0f);;
+					transform->rotation = glm::quat(0.0f, 0.0f, 1.0f, 0.0f) * glm::quat(0.0f, 1.0f, 0.0f, 0.0f);
 				}
 				else if (dir == "up") {
 					transform->rotation = glm::quat(0.7071f, 0.0f, 0.0f, -0.7071f);
@@ -1257,7 +1298,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 
 	light_location.emplace_back(camera->transform->position + glm::vec3(0.0f, 3.0f, 3.0f));
 	light_direction.emplace_back(glm::vec3(0.0f, -0.1f, -1.0f));
-	light_energy.emplace_back(glm::vec3(100.0f, 100.0f, 100.0f));
+	light_energy.emplace_back(glm::vec3(1000.0f, 1000.0f, 1000.0f));
 	light_type.emplace_back(0);
 	light_cutoff.emplace_back(1.0f);
 
