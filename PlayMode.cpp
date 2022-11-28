@@ -1255,8 +1255,8 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 	std::vector< glm::vec3 > light_energy; light_energy.reserve(lights);
 	std::vector< float > light_cutoff; light_cutoff.reserve(lights);
 
-	light_location.emplace_back(camera->transform->position + glm::vec3(0.0f, 3.0f, 0.0f));
-	light_direction.emplace_back(glm::vec3(0.0f, -0.5f, -1.0f));
+	light_location.emplace_back(camera->transform->position + glm::vec3(0.0f, 3.0f, 3.0f));
+	light_direction.emplace_back(glm::vec3(0.0f, -0.1f, -1.0f));
 	light_energy.emplace_back(glm::vec3(100.0f, 100.0f, 100.0f));
 	light_type.emplace_back(0);
 	light_cutoff.emplace_back(1.0f);
