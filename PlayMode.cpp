@@ -79,7 +79,19 @@ Load< Sound::Sample > note_miss(LoadTagDefault, []() -> Sound::Sample const * {
 	// TODO: Would like to generalize this load_song function to take in string input and load string.wav file
 */
 Load< Sound::Sample > load_song_tutorial(LoadTagDefault, []() -> Sound::Sample const * {
-	return new Sound::Sample(data_path("Tutorial.wav"));
+	return new Sound::Sample(data_path("songs/Tutorial.wav"));
+});
+
+Load< Sound::Sample > load_song_the_beginning(LoadTagDefault, []() -> Sound::Sample const * {
+	return new Sound::Sample(data_path("songs/The Beginning.wav"));
+});
+
+Load< Sound::Sample > load_song_hellbound(LoadTagDefault, []() -> Sound::Sample const * {
+	return new Sound::Sample(data_path("songs/Hellbound.wav"));
+});
+
+Load< Sound::Sample > load_song_halloween_madness(LoadTagDefault, []() -> Sound::Sample const * {
+	return new Sound::Sample(data_path("songs/Halloween Madness.wav"));
 });
 
 Load< Sound::Sample > load_song_menu(LoadTagDefault, []() -> Sound::Sample const * {
@@ -328,13 +340,12 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 
 		// would be nice to count the number of songs / know their names by reading through the file system
 		// all tutorial songs for testing purposes for now
-		song_list.emplace_back(std::make_pair("Halloween Madness", *load_song_tutorial));
-		song_list.emplace_back(std::make_pair("Halloween Greater Madness", *load_song_tutorial));
+		song_list.emplace_back(std::make_pair("Tutorial", *load_song_tutorial));
+		song_list.emplace_back(std::make_pair("The Beginning", *load_song_the_beginning));
+		song_list.emplace_back(std::make_pair("Hellbound", *load_song_hellbound));
+		song_list.emplace_back(std::make_pair("Halloween Madness", *load_song_halloween_madness));
 		song_list.emplace_back(std::make_pair("Burst Is Supreme", *load_song_tutorial));
 		song_list.emplace_back(std::make_pair("All Hail Hold", *load_song_tutorial));
-		song_list.emplace_back(std::make_pair("Empty", *load_song_tutorial));
-		song_list.emplace_back(std::make_pair("Empty", *load_song_tutorial));
-		song_list.emplace_back(std::make_pair("Empty", *load_song_tutorial));
 
 		to_menu();
 	}
