@@ -303,7 +303,7 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 		bg_transforms.resize(4 * num_walls + 2);
 		bgscale = abs(init_note_depth - max_depth);
 
-		for (int i = 0; i < bg_transforms.size(); i++) {
+		for (size_t i = 0; i < bg_transforms.size(); i++) {
 			GLuint tex_ind = 0;
 
 			bg_transforms[i] = new Scene::Transform;
@@ -632,8 +632,8 @@ void PlayMode::update_notes(float elapsed) {
 						else {
 							note.note_transforms[j]->scale = note.scale;
 						}
-						std::cout << note.note_transforms[j]->position.x << " " << note.note_transforms[j]->position.y << " " << note.note_transforms[j]->position.z << "\n";
-						std::cout << note.note_transforms[j]->scale.x << " " << note.note_transforms[j]->scale.y << " " << note.note_transforms[j]->scale.z << "\n";
+						// std::cout << note.note_transforms[j]->position.x << " " << note.note_transforms[j]->position.y << " " << note.note_transforms[j]->position.z << "\n";
+						// std::cout << note.note_transforms[j]->scale.x << " " << note.note_transforms[j]->scale.y << " " << note.note_transforms[j]->scale.z << "\n";
 						note_end_idx += 1;
 					}
 				}
@@ -757,6 +757,9 @@ HitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 			if(bbox_intersect(start, direction, note.min, note.max, t)) {
 				// initial click (whether it's the start or not)
 				//std::cout << "hold\n";
+				// glm::vec3 point = start + direction * t;
+				// std::cout << "start point " << start.x << " " << start.y << " " << start.z << "\n";
+				// std::cout << "end point " << point.x << " " << point.y << " " << point.z << "\n";
 				HitInfo hits;
 				hits.note = &notes[i];
 				hits.time = t;
@@ -890,10 +893,12 @@ void PlayMode::check_hit(bool mouse_down=true) {
 				
 				glm::mat4 inverse = hits.note->note_transforms[0]->make_world_to_local();
 				glm::vec3 start = glm::vec3(inverse * glm::vec4(camera->transform->position, 1.0f));
-				std::cout << coord[0] << " " << coord[1] << " " << music_time << " " << hits.note->hit_times[0] + real_song_offset << "\n";
+				// std::cout << coord[0] << " " << coord[1] << " " << music_time << " " << hits.note->hit_times[0] + real_song_offset << "\n";
 				glm::vec3 end = glm::vec3(inverse * glm::vec4(coord.x, coord.y, border_depth, 1.0f));
 				float dist = glm::distance(start, end);
-				std::cout << dist << " " << hits.time << "\n";
+				// std::cout << "start: " << start.x << " " << start.y << " " << start.z << "\n";
+				// std::cout << "end: " << end.x << " " << end.y << " " << end.z << "\n";
+				// std::cout << dist << " " << hits.time << "\n";
 				if(gun_mode == 2 && dist - 2 < hits.time && hits.time < dist + 2) {
 					hit_note(hits.note, 5);
 					// std::cout << "score: " << score << ", still hitting\n";		
@@ -1362,11 +1367,12 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 			}
 		} else if (game_state == PLAYING) {
 			// crosshair
+			glm::vec2 pos = glm::vec2(camera->transform->position.x, camera->transform->position.y);
 			for (uint32_t a = 0; a < circle.size(); ++a) {
 				for (float r = 0.02f; r >= 0.015f; r -= 0.001f) {
 					lines.draw(
-						glm::vec3(camera->transform->position.x + r * circle[a], 0.0f),
-						glm::vec3(camera->transform->position.y + r * circle[(a+1)%circle.size()], 0.0f),
+						glm::vec3(pos + r * circle[a], 0.0f),
+						glm::vec3(pos + r * circle[(a+1)%circle.size()], 0.0f),
 						glm::u8vec4(0xff, 0x00, 0x00, 0x00)
 					);
 				}
