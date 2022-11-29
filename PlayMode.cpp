@@ -498,16 +498,22 @@ void PlayMode::read_notes(std::string song_name) {
 					transform->scale = glm::vec3(0.0f, 0.0f, 0.0f); // all notes start from being invisible
 					float angle = 0.0f;
 					// if the xs are the same
-					if(coords_begin.x == coords_end.x) {
-						angle = -atan2((coords_begin.y - coords_end.y) / 2.0f, (time_end - time_begin) * note_speed);
-						transform->rotation = normalize(glm::angleAxis(angle, glm::vec3(1.0f, 0.0f, 0.0f)));
+					if(dir == "left") {
+						angle = -atan2((coords_begin.y - coords_end.y), (time_end - time_begin) * note_speed);
+						transform->rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f) * normalize(glm::angleAxis(angle, glm::vec3(1.0f, 0.0f, 0.0f)));
 					}
-					// otherwise the ys are the same
+					else if (dir == "right") {
+						angle = -atan2((coords_begin.y - coords_end.y), (time_end - time_begin) * note_speed);
+						transform->rotation = glm::quat(0.0f, 0.0f, 1.0f, 0.0f) * glm::quat(0.0f, 1.0f, 0.0f, 0.0f) * normalize(glm::angleAxis(angle, glm::vec3(1.0f, 0.0f, 0.0f)));
+					}
+					else if (dir == "up") {
+						angle = atan2((coords_begin.x - coords_end.x), (time_end - time_begin) * note_speed);
+						transform->rotation = glm::quat(0.7071f, 0.0f, 0.0f, -0.7071f) * normalize(glm::angleAxis(angle, glm::vec3(0.0f, 1.0f, 0.0f)));;
+					}
 					else {
-						angle = atan2((coords_begin.x - coords_end.x) / 2.0f, (time_end - time_begin) * note_speed);
-						transform->rotation = normalize(glm::angleAxis(angle, glm::vec3(0.0f, 1.0f, 0.0f)));
+						angle = atan2((coords_begin.x - coords_end.x), (time_end - time_begin) * note_speed);
+						transform->rotation = glm::quat(0.7071f, 0.0f, 0.0f, 0.7071f) * normalize(glm::angleAxis(angle, glm::vec3(0.0f, 1.0f, 0.0f)));;
 					}
-
 					note.note_transforms.push_back(transform);
 					note.hit_times.push_back(time_begin);
 					note.hit_times.push_back(time_end);
@@ -599,7 +605,7 @@ void PlayMode::update_notes(float elapsed) {
 		auto &note = notes[i];
 		// hold case - multiple note_transforms and hit_times
 		if(note.noteType == NoteType::HOLD) {
-			for (size_t j = 0; j < note.note_transforms.size()-1; j++) {
+			for (size_t j = 0; j < note.hit_times.size()-1; j++) {
 				if (note.is_active) {
 					if (music_time > note.hit_times[j+1] + valid_hit_time_delta + real_song_offset) {
 						// 'delete' the note
@@ -623,13 +629,8 @@ void PlayMode::update_notes(float elapsed) {
 						if (music_time >= note.hit_times[j] - note_approach_time + real_song_offset) {
 							// spawn the note
 							note.is_active = true;
-							if(note.noteType == NoteType::HOLD) {
-								note.note_transforms[j]->scale = 0.2f * glm::vec3(1.0f, 1.0f, note_speed * (note.hit_times[j+1] - note.hit_times[j]));
-								note.note_transforms[j]->position.z = init_note_depth - (note.hit_times[j+1] - note.hit_times[j]) / 2;
-							}
-							else {
-								note.note_transforms[j]->scale = note.scale;
-							}
+							note.note_transforms[j]->scale = glm::vec3(0.5f, 0.5f, note_speed * (note.hit_times[j+1] - note.hit_times[j]));
+							note.note_transforms[j]->position.z = init_note_depth - (note.hit_times[j+1] - note.hit_times[j]) / 2;
 							// std::cout << note.note_transforms[j]->position.x << " " << note.note_transforms[j]->position.y << " " << note.note_transforms[j]->position.z << "\n";
 							// std::cout << note.note_transforms[j]->scale.x << " " << note.note_transforms[j]->scale.y << " " << note.note_transforms[j]->scale.z << "\n";
 							note_end_idx += 1;
@@ -741,6 +742,9 @@ HitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 			// do bbox intersection
 			if(bbox_intersect(start, direction, note.min, note.max, t)) {
 				//std::cout << "single\n";
+				glm::vec3 point = start + direction * t;
+				std::cout << "single start point " << start.x << " " << start.y << " " << start.z << "\n";
+				std::cout << "single end point " << point.x << " " << point.y << " " << point.z << "\n";
 				HitInfo hits;
 				hits.note = &notes[i];
 				hits.time = t;
@@ -764,6 +768,9 @@ HitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 			// do bbox intersection
 			if(bbox_intersect(start, direction, note.min, note.max, t)) {
 				//std::cout << "burst\n";
+				glm::vec3 point = start + direction * t;
+				std::cout << "burst start point " << start.x << " " << start.y << " " << start.z << "\n";
+				std::cout << "burst end point " << point.x << " " << point.y << " " << point.z << "\n";
 				HitInfo hits;
 				hits.note = &notes[i];
 				hits.time = t;
@@ -788,8 +795,8 @@ HitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 				// initial click (whether it's the start or not)
 				//std::cout << "hold\n";
 				glm::vec3 point = start + direction * t;
-				std::cout << "start point " << start.x << " " << start.y << " " << start.z << "\n";
-				std::cout << "end point " << point.x << " " << point.y << " " << point.z << "\n";
+				std::cout << "hold start point " << start.x << " " << start.y << " " << start.z << "\n";
+				std::cout << "hold end point " << point.x << " " << point.y << " " << point.z << "\n";
 				HitInfo hits;
 				hits.note = &notes[i];
 				hits.time = t;
@@ -1186,10 +1193,10 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 			if (evt.key.keysym.sym == SDLK_RETURN) {
 				start_song(hovering_text, false);
 				return true;
-			} else if (evt.key.keysym.sym == SDLK_UP) {
+			} else if (evt.key.keysym.sym == SDLK_UP || evt.key.keysym.sym == SDLK_i) {
 				hovering_text = hovering_text == 0 ? 0 : hovering_text - 1;
 				return true;
-			} else if (evt.key.keysym.sym == SDLK_DOWN) {
+			} else if (evt.key.keysym.sym == SDLK_DOWN || evt.key.keysym.sym == SDLK_k) {
 				hovering_text = hovering_text == static_cast<uint8_t>(song_list.size()) - 1? static_cast<uint8_t>(song_list.size()) - 1: hovering_text + 1;
 				return true;
 			} else if (evt.key.keysym.sym == SDLK_ESCAPE) {
@@ -1220,10 +1227,10 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 				else if (hovering_text == 1) {restart_song(); return true;}
 				else if (hovering_text == 2) {to_menu(); return true;}
 			}
-			else if (evt.key.keysym.sym == SDLK_UP) {
+			else if (evt.key.keysym.sym == SDLK_UP || evt.key.keysym.sym == SDLK_i) {
 				hovering_text = hovering_text == 0 ? 0 : hovering_text - 1;
 				return true;
-			} else if (evt.key.keysym.sym == SDLK_DOWN) {
+			} else if (evt.key.keysym.sym == SDLK_DOWN || evt.key.keysym.sym == SDLK_k) {
 				hovering_text = hovering_text == static_cast<uint8_t>(option_texts.size()) - 1? static_cast<uint8_t>(option_texts.size()) - 1: hovering_text + 1;
 				return true;
 			}if (evt.key.keysym.sym == SDLK_ESCAPE) {
@@ -1236,10 +1243,10 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 				if (hovering_text == 0) {restart_song(); return true;}
 				else if (hovering_text == 1) {to_menu(); return true;}
 			}
-			else if (evt.key.keysym.sym == SDLK_UP) {
+			else if (evt.key.keysym.sym == SDLK_UP || evt.key.keysym.sym == SDLK_i) {
 				hovering_text = hovering_text == 0 ? 0 : hovering_text - 1;
 				return true;
-			} else if (evt.key.keysym.sym == SDLK_DOWN) {
+			} else if (evt.key.keysym.sym == SDLK_DOWN || evt.key.keysym.sym == SDLK_k) {
 				hovering_text = hovering_text == static_cast<uint8_t>(songover_texts.size()) - 1? static_cast<uint8_t>(songover_texts.size()) - 1: hovering_text + 1;
 				return true;
 			}if (evt.key.keysym.sym == SDLK_ESCAPE) {
