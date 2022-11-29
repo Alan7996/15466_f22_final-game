@@ -1,6 +1,4 @@
 // TODO : figure out why border is set to 2.5 (change lines ~260)
-// TODO : add multiple lights (change lines ~1200)
-// TODO : add background textures (change litcolortextureprogram)
 // TODO : fix intersection code for hold (I think burst is fine for now)
 // TODO : currently, scaling and positioning hold incorrectly (might also be true for the burst and single)
 
@@ -501,12 +499,12 @@ void PlayMode::read_notes(std::string song_name) {
 					float angle = 0.0f;
 					// if the xs are the same
 					if(coords_begin.x == coords_end.x) {
-						angle = -atan2((coords_begin.y - coords_end.y) / 2.0f, time_end - time_begin);
+						angle = -atan2((coords_begin.y - coords_end.y) / 2.0f, (time_end - time_begin) * note_speed);
 						transform->rotation = normalize(glm::angleAxis(angle, glm::vec3(1.0f, 0.0f, 0.0f)));
 					}
 					// otherwise the ys are the same
 					else {
-						angle = atan2((coords_begin.x - coords_end.x) / 2.0f, time_end - time_begin);
+						angle = atan2((coords_begin.x - coords_end.x) / 2.0f, (time_end - time_begin) * note_speed);
 						transform->rotation = normalize(glm::angleAxis(angle, glm::vec3(0.0f, 1.0f, 0.0f)));
 					}
 
@@ -564,7 +562,6 @@ void PlayMode::read_notes(std::string song_name) {
 void PlayMode::update_bg(float elapsed) {
 	assert(game_state == PLAYING);
 
-	float note_speed = (border_depth - init_note_depth) / note_approach_time;
 	for (size_t i = 0; i < bg_transforms.size() - 2; i++) {
 		bg_transforms[i]->position.z = bg_transforms[i]->position.z + note_speed * elapsed;
 		if (bg_transforms[i]->position.z > 2.0f * bgscale) 
@@ -600,13 +597,55 @@ void PlayMode::update_notes(float elapsed) {
 	for (int i = note_start_idx; i < note_end_idx + 1; i++) {
 		if (i >= (int)notes.size()) continue;
 		auto &note = notes[i];
-		for (int j = 0; j < (int)note.note_transforms.size(); j++) {
+		// hold case - multiple note_transforms and hit_times
+		if(note.noteType == NoteType::HOLD) {
+			for (size_t j = 0; j < note.note_transforms.size()-1; j++) {
+				if (note.is_active) {
+					if (music_time > note.hit_times[j+1] + valid_hit_time_delta + real_song_offset) {
+						// 'delete' the note
+						if (!note.been_hit) hit_note(nullptr, -1);
+
+						note.note_transforms[j]->scale = glm::vec3(0.0f, 0.0f, 0.0f);
+						note_start_idx += 1;
+
+						if (note_start_idx == (int)notes.size()) {
+							song_cleared = true;
+							song_clear_time = std::chrono::high_resolution_clock::now();
+						}
+					}
+					else {
+						// move the note
+						float delta_time = music_time - (note.hit_times[j] - note_approach_time);
+						note.note_transforms[j]->position.z = init_note_depth + note_speed * delta_time;
+					}
+				} else {
+					if (!note.been_hit) {
+						if (music_time >= note.hit_times[j] - note_approach_time + real_song_offset) {
+							// spawn the note
+							note.is_active = true;
+							if(note.noteType == NoteType::HOLD) {
+								note.note_transforms[j]->scale = 0.2f * glm::vec3(1.0f, 1.0f, note_speed * (note.hit_times[j+1] - note.hit_times[j]));
+								note.note_transforms[j]->position.z = init_note_depth - (note.hit_times[j+1] - note.hit_times[j]) / 2;
+							}
+							else {
+								note.note_transforms[j]->scale = note.scale;
+							}
+							// std::cout << note.note_transforms[j]->position.x << " " << note.note_transforms[j]->position.y << " " << note.note_transforms[j]->position.z << "\n";
+							// std::cout << note.note_transforms[j]->scale.x << " " << note.note_transforms[j]->scale.y << " " << note.note_transforms[j]->scale.z << "\n";
+							note_end_idx += 1;
+						}
+					}
+				}
+			}
+		}
+		// single and burst case - only one note_transform and hit_time
+		else {
 			if (note.is_active) {
-				if (music_time > note.hit_times[j] + valid_hit_time_delta + real_song_offset) {
+				if (music_time > note.hit_times[0] + valid_hit_time_delta + real_song_offset) {
 					// 'delete' the note
 					if (!note.been_hit) hit_note(nullptr, -1);
 
-					note.note_transforms[j]->scale = glm::vec3(0.0f, 0.0f, 0.0f);
+					note.note_transforms[0]->scale = glm::vec3(0.0f, 0.0f, 0.0f);
 					note_start_idx += 1;
 
 					if (note_start_idx == (int)notes.size()) {
@@ -616,24 +655,15 @@ void PlayMode::update_notes(float elapsed) {
 				}
 				else {
 					// move the note
-					float delta_time = music_time - (note.hit_times[j] - note_approach_time);
-					float note_speed = (border_depth - init_note_depth) / note_approach_time;
-					note.note_transforms[j]->position.z = init_note_depth + note_speed * delta_time;
+					float delta_time = music_time - (note.hit_times[0] - note_approach_time);
+					note.note_transforms[0]->position.z = init_note_depth + note_speed * delta_time;
 				}
 			} else {
 				if (!note.been_hit) {
-					if (music_time >= note.hit_times[j] - note_approach_time + real_song_offset) {
+					if (music_time >= note.hit_times[0] - note_approach_time + real_song_offset) {
 						// spawn the note
 						note.is_active = true;
-						if(note.noteType == NoteType::HOLD) {
-							note.note_transforms[j]->scale = glm::vec3(0.5f, 0.5f, (note.hit_times[j+1] - note.hit_times[j]));
-							note.note_transforms[j]->position.z = init_note_depth - (note.hit_times[j+1] - note.hit_times[j]) / 2;
-						}
-						else {
-							note.note_transforms[j]->scale = note.scale;
-						}
-						// std::cout << note.note_transforms[j]->position.x << " " << note.note_transforms[j]->position.y << " " << note.note_transforms[j]->position.z << "\n";
-						// std::cout << note.note_transforms[j]->scale.x << " " << note.note_transforms[j]->scale.y << " " << note.note_transforms[j]->scale.z << "\n";
+						note.note_transforms[0]->scale = note.scale;
 						note_end_idx += 1;
 					}
 				}
@@ -679,7 +709,7 @@ bool PlayMode::bbox_intersect(glm::vec3 pos, glm::vec3 dir, glm::vec3 min, glm::
 		return false;
 	}
 	// std::cout << tmin << " " << tmax << "\n"; 
-	t = (tmin + tmax) / 2.f;
+	t = tmin;
 	return true;
 }
 
@@ -757,9 +787,9 @@ HitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 			if(bbox_intersect(start, direction, note.min, note.max, t)) {
 				// initial click (whether it's the start or not)
 				//std::cout << "hold\n";
-				// glm::vec3 point = start + direction * t;
-				// std::cout << "start point " << start.x << " " << start.y << " " << start.z << "\n";
-				// std::cout << "end point " << point.x << " " << point.y << " " << point.z << "\n";
+				glm::vec3 point = start + direction * t;
+				std::cout << "start point " << start.x << " " << start.y << " " << start.z << "\n";
+				std::cout << "end point " << point.x << " " << point.y << " " << point.z << "\n";
 				HitInfo hits;
 				hits.note = &notes[i];
 				hits.time = t;
@@ -889,15 +919,18 @@ void PlayMode::check_hit(bool mouse_down=true) {
 				// holding in between note
 				// TODO: fix the math on the next line
 				// want to do linear interpolation between the hit_times depending on how fast the note is approaching
-				glm::vec2 coord = get_coords(hits.note->dir, hits.note->coord_begin + (music_time - hits.note->hit_times[0] + real_song_offset) * (hits.note->coord_end - hits.note->coord_begin) * note_approach_time / (hits.note->hit_times[1] - hits.note->hit_times[0]));
+				glm::vec2 coord = get_coords(hits.note->dir, hits.note->coord_begin + (music_time - hits.note->hit_times[0] + real_song_offset) * (hits.note->coord_end - hits.note->coord_begin) / (hits.note->hit_times[1] - hits.note->hit_times[0]));
 				
 				glm::mat4 inverse = hits.note->note_transforms[0]->make_world_to_local();
 				glm::vec3 start = glm::vec3(inverse * glm::vec4(camera->transform->position, 1.0f));
 				// std::cout << coord[0] << " " << coord[1] << " " << music_time << " " << hits.note->hit_times[0] + real_song_offset << "\n";
 				glm::vec3 end = glm::vec3(inverse * glm::vec4(coord.x, coord.y, border_depth, 1.0f));
 				float dist = glm::distance(start, end);
-				// std::cout << "start: " << start.x << " " << start.y << " " << start.z << "\n";
-				// std::cout << "end: " << end.x << " " << end.y << " " << end.z << "\n";
+				std::cout << "start: " << start.x << " " << start.y << " " << start.z << "\n";
+				std::cout << "end border depth: " << end.x << " " << end.y << " " << end.z << "\n";
+				end = glm::vec3(inverse * glm::vec4(coord.x, coord.y, 2.5f, 1.0f));
+				std::cout << "end 2.5: " << end.x << " " << end.y << " " << end.z << "\n";
+				std::cout << "\n";
 				// std::cout << dist << " " << hits.time << "\n";
 				if(gun_mode == 2 && dist - 2 < hits.time && hits.time < dist + 2) {
 					hit_note(hits.note, 5);
@@ -968,7 +1001,7 @@ void PlayMode::reset_song() {
 	// reset loaded assets
 	if (active_song) active_song->stop();
 	scene.drawables.erase(std::prev(scene.drawables.end(), notes.size()), scene.drawables.end());
-	// read_notes(song_list[chosen_song].first);
+	read_notes(song_list[chosen_song].first);
 	// for (auto &note: notes) {
 	// 	note.been_hit = false;
 	// 	note.is_active = false;
@@ -1071,9 +1104,9 @@ void PlayMode::start_song(int idx, bool restart) {
 	music_start_time = std::chrono::high_resolution_clock::now(); // might want to reconsider if we want buffer time between starting the song and loading the level
 
 	// choose the song based on index
-	// if (!restart) {
+	if (!restart) {
 		read_notes(song_list[idx].first);
-	// }
+	}
 	active_song = Sound::play(song_list[idx].second);
 }
 
@@ -1082,6 +1115,7 @@ void PlayMode::start_song(int idx, bool restart) {
 		restart_song should only be called when going from PLAYING -> PAUSED -> select RESTART
 */
 void PlayMode::restart_song() {
+	bg_transforms[9]->position = glm::vec3(0.0f, 0.0f, 10.0f);
 	reset_song();
 	has_started = false;
 	start_song(chosen_song, true);

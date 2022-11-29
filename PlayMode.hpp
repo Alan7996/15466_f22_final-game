@@ -195,7 +195,8 @@ struct PlayMode : Mode {
 	float note_approach_time = 4.0f; // time between when the note shows up and hit time
 	float valid_hit_time_delta = 0.3f;
 	float real_song_offset = 0.075f;
-	
+	float note_speed = (border_depth - init_note_depth) / note_approach_time;
+
 	float bgscale;
 
 	float mouse_sens = 0.4f;
