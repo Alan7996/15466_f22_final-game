@@ -515,8 +515,8 @@ void PlayMode::read_notes(std::string song_name) {
 						transform->rotation = glm::quat(0.7071f, 0.0f, 0.0f, 0.7071f) * normalize(glm::angleAxis(angle, glm::vec3(0.0f, 1.0f, 0.0f)));;
 					}
 					note.note_transforms.push_back(transform);
-					note.hit_times.push_back(time_begin);
-					note.hit_times.push_back(time_end);
+					note.hit_times.push_back(time_begin + real_song_offset);
+					note.hit_times.push_back(time_end + real_song_offset);
 				}
 			} else {
 				float coord = std::stof(note_info[3]);
@@ -542,7 +542,7 @@ void PlayMode::read_notes(std::string song_name) {
 					transform->rotation = glm::quat(0.7071f, 0.0f, 0.0f, 0.7071f);
 				}
 				note.note_transforms.push_back(transform);
-				note.hit_times.push_back(time);
+				note.hit_times.push_back(time + real_song_offset);
 			}
 
 			notes.push_back(note);
@@ -607,7 +607,7 @@ void PlayMode::update_notes(float elapsed) {
 		if(note.noteType == NoteType::HOLD) {
 			for (size_t j = 0; j < note.hit_times.size()-1; j++) {
 				if (note.is_active) {
-					if (music_time > note.hit_times[j+1] + valid_hit_time_delta + real_song_offset) {
+					if (music_time > note.hit_times[j+1] + valid_hit_time_delta) {
 						// 'delete' the note
 						if (!note.been_hit) hit_note(nullptr, -1);
 
@@ -626,7 +626,7 @@ void PlayMode::update_notes(float elapsed) {
 					}
 				} else {
 					if (!note.been_hit) {
-						if (music_time >= note.hit_times[j] - note_approach_time + real_song_offset) {
+						if (music_time >= note.hit_times[j] - note_approach_time) {
 							// spawn the note
 							note.is_active = true;
 							note.note_transforms[j]->scale = glm::vec3(0.5f, 0.5f, note_speed * (note.hit_times[j+1] - note.hit_times[j]));
@@ -642,7 +642,7 @@ void PlayMode::update_notes(float elapsed) {
 		// single and burst case - only one note_transform and hit_time
 		else {
 			if (note.is_active) {
-				if (music_time > note.hit_times[0] + valid_hit_time_delta + real_song_offset) {
+				if (music_time > note.hit_times[0] + valid_hit_time_delta) {
 					// 'delete' the note
 					if (!note.been_hit) hit_note(nullptr, -1);
 
@@ -661,7 +661,7 @@ void PlayMode::update_notes(float elapsed) {
 				}
 			} else {
 				if (!note.been_hit) {
-					if (music_time >= note.hit_times[0] - note_approach_time + real_song_offset) {
+					if (music_time >= note.hit_times[0] - note_approach_time) {
 						// spawn the note
 						note.is_active = true;
 						note.note_transforms[0]->scale = note.scale;
@@ -912,12 +912,12 @@ void PlayMode::check_hit(bool mouse_down=true) {
 	if(hits.note) {
 		if(hits.note->noteType == NoteType::HOLD) {
 			// only considers first 0.2 seconds of the hold -> need to change
-			if(fabs(music_time - hits.note->hit_times[0] + real_song_offset) < valid_hit_time_delta && !holding && mouse_down) {
+			if(fabs(music_time - hits.note->hit_times[0]) < valid_hit_time_delta && !holding && mouse_down) {
 				// initial click
 				hit_note(hits.note, 4);
 				// std::cout << "score: " << score << ", first click hitting\n";
 			}
-			else if(fabs(hits.note->hit_times[1] - music_time + real_song_offset) < valid_hit_time_delta && !holding && !mouse_down) {
+			else if(fabs(hits.note->hit_times[1] - music_time) < valid_hit_time_delta && !holding && !mouse_down) {
 				// release near the end
 				hit_note(hits.note, 4);
 				// std::cout << "score: " << score << ", last click hitting\n";
@@ -955,14 +955,14 @@ void PlayMode::check_hit(bool mouse_down=true) {
 
 			// valid hit time for single and burst
 			// std::cout << music_time << " " << hits.note->hit_times[0] + real_song_offset << "\n";
-			if(fabs(music_time - hits.note->hit_times[0] + real_song_offset) < valid_hit_time_delta / 2.0f) {
+			if(fabs(music_time - hits.note->hit_times[0]) < valid_hit_time_delta / 2.0f) {
 				// good hit
 				if ((gun_mode == 0 && hits.note->noteType == NoteType::SINGLE) || (gun_mode == 1 && hits.note->noteType == NoteType::BURST)){
 					hit_note(hits.note, 2);
 				} else {
 					hit_note(hits.note, 3);
 				}
-			} else if (fabs(music_time - hits.note->hit_times[0] + real_song_offset) < valid_hit_time_delta) {
+			} else if (fabs(music_time - hits.note->hit_times[0]) < valid_hit_time_delta) {
 				// ok hit
 				if ((gun_mode == 0 && hits.note->noteType == NoteType::SINGLE) || (gun_mode == 1 && hits.note->noteType == NoteType::BURST)){
 					hit_note(hits.note, 1);
@@ -1157,6 +1157,7 @@ void PlayMode::unpause_song() {
 		Should be called when either health reaches zero or if note_start_idx is equal to the end of the vector 
 */
 void PlayMode::game_over(bool did_clear) {
+	return;
 	reset_cam();
 	if (active_song) active_song->set_volume(0.0f, 3.0f);
 	bg_transforms[9]->position = glm::vec3(0.0f, 0.0f, 2.0f);
@@ -1259,6 +1260,9 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 		SDL_SetRelativeMouseMode(SDL_TRUE);
 		if (game_state != PLAYING) return true;
 		check_hit();
+		auto current_time = std::chrono::high_resolution_clock::now();
+		float music_time = std::chrono::duration<float>(current_time - music_start_time).count();
+		std::cout << std::to_string(music_time) << std::endl;
 		holding = true;
 	} else if (evt.type == SDL_MOUSEBUTTONUP) {
 		if (game_state != PLAYING) return true;
@@ -1334,7 +1338,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 	//set up light type and position for lit_color_texture_program:
 	// from forward lighting class demo
 	//compute light uniforms:
-	uint32_t lights = uint32_t(2);
+	uint32_t lights = uint32_t(6);
 
 	std::vector< int32_t > light_type; light_type.reserve(lights);
 	std::vector< glm::vec3 > light_location; light_location.reserve(lights);
@@ -1344,7 +1348,28 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 
 	light_location.emplace_back(camera->transform->position + glm::vec3(0.0f, 3.0f, 3.0f));
 	light_direction.emplace_back(glm::vec3(0.0f, -0.1f, -1.0f));
-	light_energy.emplace_back(glm::vec3(1000.0f, 1000.0f, 1000.0f));
+	light_energy.emplace_back(glm::vec3(50.0f, 50.0f, 50.0f));
+	light_type.emplace_back(0);
+	light_cutoff.emplace_back(1.0f);
+
+	light_location.emplace_back(camera->transform->position + glm::vec3(3.0f, 0.0f, -2.0f));
+	light_direction.emplace_back(glm::vec3(1.0f, 0.0f, -1.0f));
+	light_energy.emplace_back(glm::vec3(50.0f, 50.0f, 50.0f));
+	light_type.emplace_back(0);
+	light_cutoff.emplace_back(1.0f);
+	light_location.emplace_back(camera->transform->position + glm::vec3(-3.0f, 0.0f, -2.0f));
+	light_direction.emplace_back(glm::vec3(-1.0f, 0.0f, -1.0f));
+	light_energy.emplace_back(glm::vec3(50.0f, 50.0f, 50.0f));
+	light_type.emplace_back(0);
+	light_cutoff.emplace_back(1.0f);
+	light_location.emplace_back(camera->transform->position + glm::vec3(0.0f, 3.0f, -2.0f));
+	light_direction.emplace_back(glm::vec3(0.0f, 1.0f, -1.0f));
+	light_energy.emplace_back(glm::vec3(50.0f, 50.0f, 50.0f));
+	light_type.emplace_back(0);
+	light_cutoff.emplace_back(1.0f);
+	light_location.emplace_back(camera->transform->position + glm::vec3(0.0f, -3.0f, -2.0f));
+	light_direction.emplace_back(glm::vec3(0.0f, -1.0f, -1.0f));
+	light_energy.emplace_back(glm::vec3(50.0f, 50.0f, 50.0f));
 	light_type.emplace_back(0);
 	light_cutoff.emplace_back(1.0f);
 
@@ -1354,17 +1379,8 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 	light_type.emplace_back(2);
 	light_cutoff.emplace_back(1.0f);
 
-	// point light - 0
 	glUseProgram(lit_color_texture_program->program);
-	// glUniform1i(lit_color_texture_program->LIGHT_TYPE_int, 0);
-	// actual ?
-	// glUniform3fv(lit_color_texture_program->LIGHT_LOCATION_vec3, 1, glm::value_ptr(camera->transform->position + glm::vec3(0.0f, 3.0f, 10.0f)));
-	// glUniform3fv(lit_color_texture_program->LIGHT_DIRECTION_vec3, 1, glm::value_ptr(glm::vec3(0.0f, -0.5f, -1.0f)));
-	// glUniform3fv(lit_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(100.0f, 100.0f, 100.0f)));
-	// for demo
-	// glUniform3fv(lit_color_texture_program->LIGHT_LOCATION_vec3, 1, glm::value_ptr(camera->transform->position + glm::vec3(0.0f, 3.0f, 50.0f)));
-	// glUniform3fv(lit_color_texture_program->LIGHT_DIRECTION_vec3, 1, glm::value_ptr(glm::vec3(0.0f, -0.5f, -1.0f)));
-	// glUniform3fv(lit_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(4000.0f, 4000.0f, 4000.0f)));
+	glUniform1ui(lit_color_texture_program->LIGHTS_uint, lights);
 	glUniform1iv(lit_color_texture_program->LIGHT_TYPE_int, lights, light_type.data());
 	glUniform3fv(lit_color_texture_program->LIGHT_LOCATION_vec3, lights, glm::value_ptr(light_location[0]));
 	glUniform3fv(lit_color_texture_program->LIGHT_DIRECTION_vec3, lights, glm::value_ptr(light_direction[0]));

@@ -72,11 +72,12 @@ LitColorTextureProgram::LitColorTextureProgram() {
 		//fragment shader:
 		"#version 330\n"
 		"uniform sampler2D TEX;\n"
-		"uniform int LIGHT_TYPE[" + std::to_string(2) + "];\n"
-		"uniform vec3 LIGHT_LOCATION[" + std::to_string(2) + "];\n"
-		"uniform vec3 LIGHT_DIRECTION[" + std::to_string(2) + "];\n"
-		"uniform vec3 LIGHT_ENERGY[" + std::to_string(2) + "];\n"
-		"uniform float LIGHT_CUTOFF[" + std::to_string(2) + "];\n"
+		"uniform uint LIGHTS;\n"
+		"uniform int LIGHT_TYPE[" + std::to_string(MaxLights) + "];\n"
+		"uniform vec3 LIGHT_LOCATION[" + std::to_string(MaxLights) + "];\n"
+		"uniform vec3 LIGHT_DIRECTION[" + std::to_string(MaxLights) + "];\n"
+		"uniform vec3 LIGHT_ENERGY[" + std::to_string(MaxLights) + "];\n"
+		"uniform float LIGHT_CUTOFF[" + std::to_string(MaxLights) + "];\n"
 		"in vec3 position;\n"
 		"in vec3 normal;\n"
 		"in vec4 color;\n"
@@ -86,7 +87,7 @@ LitColorTextureProgram::LitColorTextureProgram() {
 		"	vec3 n = normalize(normal);\n"
 		"	vec4 albedo = texture(TEX, texCoord) * color;\n"
 		"	vec3 total = vec3(0.0f); //total light output\n"
-		"	for (uint light = 0u; light < 2u; ++light) {\n"
+		"	for (uint light = 0u; light < LIGHTS; ++light) {\n"
 		"		int TYPE = LIGHT_TYPE[light];\n"
 		"		vec3 LOCATION = LIGHT_LOCATION[light];\n"
 		"		vec3 DIRECTION = LIGHT_DIRECTION[light];\n"
@@ -132,6 +133,8 @@ LitColorTextureProgram::LitColorTextureProgram() {
 	OBJECT_TO_CLIP_mat4 = glGetUniformLocation(program, "OBJECT_TO_CLIP");
 	OBJECT_TO_LIGHT_mat4x3 = glGetUniformLocation(program, "OBJECT_TO_LIGHT");
 	NORMAL_TO_LIGHT_mat3 = glGetUniformLocation(program, "NORMAL_TO_LIGHT");
+
+	LIGHTS_uint = glGetUniformLocation(program, "LIGHTS");
 
 	LIGHT_TYPE_int = glGetUniformLocation(program, "LIGHT_TYPE");
 	LIGHT_LOCATION_vec3 = glGetUniformLocation(program, "LIGHT_LOCATION");
