@@ -1157,7 +1157,6 @@ void PlayMode::unpause_song() {
 		Should be called when either health reaches zero or if note_start_idx is equal to the end of the vector 
 */
 void PlayMode::game_over(bool did_clear) {
-	return;
 	reset_cam();
 	if (active_song) active_song->set_volume(0.0f, 3.0f);
 	bg_transforms[9]->position = glm::vec3(0.0f, 0.0f, 2.0f);
