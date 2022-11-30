@@ -7,7 +7,7 @@ single 2 down  0.25 @ 10.8
 single 0 down  -0.5 @ 12.05
 single 1 down  0 @ 12.42
 single 2 down  0.5 @ 12.8
-single 3 down  0.5 @ 14.05
+single 0 down  0.5 @ 14.05
 single 1 down  0 @ 14.42
 single 2 down  -0.5 @ 14.8
 single 0 left  -0.5 @ 16.05
@@ -93,4 +93,3 @@ single 3 down  0.2 @ 93.55
 single 0 down  0.1 @ 94.05
 single 1 down  0 @ 94.55
 single 2 down  0 @ 95.05
-hold   7 down  0 0 @ 95.55 97.05

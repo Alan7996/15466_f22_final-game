@@ -34,7 +34,7 @@ GLuint main_meshes_for_lit_color_texture_program = 0;
 	Load in mesh data from main.pnct into meshbuffer and make the program
 */
 Load< MeshBuffer > main_meshes(LoadTagDefault, []() -> MeshBuffer const * {
-	MeshBuffer const *ret = new MeshBuffer(data_path("main2.pnct"));
+	MeshBuffer const *ret = new MeshBuffer(data_path("main.pnct"));
 	main_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
 	return ret;
 });
@@ -43,7 +43,7 @@ Load< MeshBuffer > main_meshes(LoadTagDefault, []() -> MeshBuffer const * {
 	Load in the scene data from main.scene and set up drawables vector with everything in the scene
 */
 Load< Scene > main_scene(LoadTagDefault, []() -> Scene const * {
-	return new Scene(data_path("main2.scene"), [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name){
+	return new Scene(data_path("main.scene"), [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name){
 		Mesh const &mesh = main_meshes->lookup(mesh_name);
 
 		scene.drawables.emplace_back(transform);
@@ -160,17 +160,24 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 	if (scene.cameras.size() != 1) throw std::runtime_error("Expecting scene to have exactly one camera, but it has " + std::to_string(scene.cameras.size()));
 	camera = &scene.cameras.front();
 
-	std::vector<Drawable> default_skin(15);
+	std::vector<Drawable> skin_halloween(10);
+	std::vector<Drawable> skin_christmas(10);
 	std::vector<Drawable> backgrounds(3);
 	std::vector<Drawable> gun_drawables(3);
 
 	for (auto &d : scene.drawables) {
-		if (d.transform->name.find("Note") != std::string::npos) {
-			// set up default skin array, only support total 10 skin variations
-			int idx = d.transform->name.at(4) - '0';
-			default_skin[idx].type = d.pipeline.type;
-			default_skin[idx].start = d.pipeline.start;
-			default_skin[idx].count = d.pipeline.count;
+		if (d.transform->name.find("NoteHalloween") != std::string::npos) {
+			// set up Halloween skin array, only support total 10 skin variations
+			int idx = d.transform->name.at(13) - '0';
+			skin_halloween[idx].type = d.pipeline.type;
+			skin_halloween[idx].start = d.pipeline.start;
+			skin_halloween[idx].count = d.pipeline.count;
+		} else if (d.transform->name.find("NoteChristmas") != std::string::npos) {
+			// set up Christmas skin array, only support total 10 skin variations
+			int idx = d.transform->name.at(13) - '0';
+			skin_christmas[idx].type = d.pipeline.type;
+			skin_christmas[idx].start = d.pipeline.start;
+			skin_christmas[idx].count = d.pipeline.count;
 		} else if (d.transform->name == "GunSingle") {
 			gun_drawables[0].type = d.pipeline.type;
 			gun_drawables[0].start = d.pipeline.start;
@@ -218,7 +225,8 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 		}
 	}
 
-	beatmap_skins.emplace_back(std::make_pair("Note", default_skin));
+	beatmap_skins.emplace_back(std::make_pair("NoteHalloween", skin_halloween));
+	beatmap_skins.emplace_back(std::make_pair("NoteChristmas", skin_christmas));
 	scene.drawables.clear();
 
 	{ // initialize game state
