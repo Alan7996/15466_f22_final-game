@@ -1,14 +1,3 @@
 Blender files in this folder may be used/modified under a Creative Commons Attribution license.
 Authors to credit:
- brunch.blend -- Yixin He
- city.blend -- Jim McCann
- garden.blend -- Yixin He
- hexapod.blend -- Jim McCann
- pool.blend -- Jim McCann
- sphere-roller.blend -- Jim McCann
- sphere-world.blend -- Jim McCann
- phone-bank.blend -- Jim McCann
-
-
- Snake.blend - "Snake 3d" (https://skfb.ly/osKLL) by Talha Riaz is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).
- Eyeball.blend - "Eyeball" (https://skfb.ly/6ZC8A) by Blankly Rabbit Brody is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/).
+ main.blend -- Joanna Yao
