@@ -309,45 +309,45 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 				case 0: // Up
 					bg_transforms[i]->position = glm::vec3(0, 5.0f * y_scale, 0);
 					bg_transforms[i]->rotation = glm::quat(0.0f, 0.0f, 1.0f, 0.0f) * glm::quat(0.0f, 1.0f, 0.0f, 0.0f);
-					bg_transforms[i]->scale = glm::vec3(5.0f * x_scale, 1, bgscale);
+					bg_transforms[i]->scale = glm::vec3(5.2f * x_scale, 1, bgscale + 0.1f);
 					tex_ind = *load_tex_wall_up;
 					break;
 				case 1:
 					bg_transforms[i]->position = glm::vec3(0, 5.0f * y_scale, -2.0f * bgscale);
 					bg_transforms[i]->rotation = glm::quat(0.0f, 0.0f, 1.0f, 0.0f) * glm::quat(0.0f, 1.0f, 0.0f, 0.0f);
-					bg_transforms[i]->scale = glm::vec3(5.0f * x_scale, 1, bgscale);
+					bg_transforms[i]->scale = glm::vec3(5.2f * x_scale, 1, bgscale);
 					tex_ind = *load_tex_wall_up;
 					break;
 				case 2: // Down
 					bg_transforms[i]->position = glm::vec3(0, -5.0f * y_scale, 0);
-					bg_transforms[i]->scale = glm::vec3(5.0f * x_scale, 1, bgscale);
+					bg_transforms[i]->scale = glm::vec3(5.2f * x_scale, 1, bgscale + 0.1f);
 					tex_ind = *load_tex_wall_down;
 					break;
 				case 3:
 					bg_transforms[i]->position = glm::vec3(0, -5.0f * y_scale, -2.0f * bgscale);
-					bg_transforms[i]->scale = glm::vec3(5.0f * x_scale, 1, bgscale);
+					bg_transforms[i]->scale = glm::vec3(5.2f * x_scale, 1, bgscale);
 					tex_ind = *load_tex_wall_down;
 					break;
 				case 4: // Left
 					bg_transforms[i]->position = glm::vec3(-5.0f * x_scale, 0, 0);
-					bg_transforms[i]->scale = glm::vec3(1, 5.0f * y_scale, bgscale);
+					bg_transforms[i]->scale = glm::vec3(1, 5.2f * y_scale, bgscale + 0.1f);
 					tex_ind = *load_tex_wall_left;
 					break;
 				case 5:
 					bg_transforms[i]->position = glm::vec3(-5.0f * x_scale, 0, -2.0f * bgscale);
-					bg_transforms[i]->scale = glm::vec3(1, 5.0f * y_scale, bgscale);
+					bg_transforms[i]->scale = glm::vec3(1, 5.2f * y_scale, bgscale);
 					tex_ind = *load_tex_wall_left;
 					break;
 				case 6: // Right
 					bg_transforms[i]->position = glm::vec3(5.0f * x_scale, 0, 0);
 					bg_transforms[i]->rotation = glm::quat(0.0f, 0.0f, 1.0f, 0.0f) * glm::quat(0.0f, 1.0f, 0.0f, 0.0f);
-					bg_transforms[i]->scale = glm::vec3(1, 5.0f * y_scale, bgscale);
+					bg_transforms[i]->scale = glm::vec3(1, 5.2f * y_scale, bgscale + 0.1f);
 					tex_ind = *load_tex_wall_right;
 					break;
 				case 7:
 					bg_transforms[i]->position = glm::vec3(5.0f * x_scale, 0, -2.0f * bgscale);
 					bg_transforms[i]->rotation = glm::quat(0.0f, 0.0f, 1.0f, 0.0f) * glm::quat(0.0f, 1.0f, 0.0f, 0.0f);
-					bg_transforms[i]->scale = glm::vec3(1, 5.0f * y_scale, bgscale);
+					bg_transforms[i]->scale = glm::vec3(1, 5.2f * y_scale, bgscale);
 					tex_ind = *load_tex_wall_right;
 					break;
 				case 8: // Center front
