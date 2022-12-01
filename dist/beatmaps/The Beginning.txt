@@ -93,3 +93,4 @@ single 3 down  0.2 @ 93.55
 single 0 down  0.1 @ 94.05
 single 1 down  0 @ 94.55
 single 2 down  0 @ 95.05
+hold   7 down  0 0 @ 95.55 97.05
