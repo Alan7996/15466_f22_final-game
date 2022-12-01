@@ -391,8 +391,8 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 		song_list.emplace_back(std::make_pair("The Beginning", *load_song_the_beginning));
 		song_list.emplace_back(std::make_pair("Hellbound", *load_song_hellbound));
 		song_list.emplace_back(std::make_pair("Halloween Madness", *load_song_halloween_madness));
-		song_list.emplace_back(std::make_pair("Burst Is Supreme", *load_song_tutorial));
-		song_list.emplace_back(std::make_pair("All Hail Hold", *load_song_tutorial));
+		// song_list.emplace_back(std::make_pair("Burst Is Supreme", *load_song_tutorial));
+		// song_list.emplace_back(std::make_pair("All Hail Hold", *load_song_tutorial));
 
 		to_menu();
 	}
