@@ -222,6 +222,10 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 			backgrounds[1].type = d.pipeline.type;
 			backgrounds[1].start = d.pipeline.start;
 			backgrounds[1].count = d.pipeline.count;
+		} else if (d.transform->name == "Note7") {
+			skin_halloween[7].type = d.pipeline.type;
+			skin_halloween[7].start = d.pipeline.start;
+			skin_halloween[7].count = d.pipeline.count;
 		}
 	}
 
@@ -473,12 +477,12 @@ void PlayMode::read_notes(std::string song_name) {
 			std::vector<std::string> note_info;
 			tokenize(line, delim, note_info);
 			std::string note_type = note_info[0];
-			int note_mesh_idx = stoi(note_info[1]);
+			// int note_mesh_idx = stoi(note_info[1]);
 			std::string dir = note_info[2];
 			int idx = (int) (find(note_info.begin(), note_info.end(), "@") - note_info.begin());
 
 			NoteInfo note;
-			Mesh note_mesh = meshBuf->lookup(beatmap_skins[active_skin_idx].first + note_info[1]);
+			Mesh note_mesh = meshBuf->lookup("Note" + note_info[1]);
 			note.min = note_mesh.min;
 			note.max = note_mesh.max;
 			note.dir = dir;
@@ -560,9 +564,9 @@ void PlayMode::read_notes(std::string song_name) {
 				Scene::Drawable &d = scene.drawables.back();
 				d.pipeline = lit_color_texture_program_pipeline;
 				d.pipeline.vao = main_meshes_for_lit_color_texture_program;
-				d.pipeline.type = beatmap_skins[active_skin_idx].second[note_mesh_idx].type;
-				d.pipeline.start = beatmap_skins[active_skin_idx].second[note_mesh_idx].start;
-				d.pipeline.count = beatmap_skins[active_skin_idx].second[note_mesh_idx].count;
+				d.pipeline.type = beatmap_skins[active_skin_idx].second[7].type;
+				d.pipeline.start = beatmap_skins[active_skin_idx].second[7].start;
+				d.pipeline.count = beatmap_skins[active_skin_idx].second[7].count;
 			}
 		}
 		file.close();
