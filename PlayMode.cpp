@@ -1058,7 +1058,10 @@ void PlayMode::to_menu() {
 	healthbarright_transform->scale = glm::vec3();
 	border_transform->scale = glm::vec3();
 
-	if (notes.size() >= 1) reset_song();
+	if (notes.size() >= 1) {
+        	reset_song();
+        	scene.drawables.erase(std::prev(scene.drawables.end(), notes.size()), scene.drawables.end());
+    	}
 	reset_cam();
 
 	// stop currently playing song
