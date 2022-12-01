@@ -463,6 +463,8 @@ Reads a txt file representing a beatmap and fills in the proper data structures 
 void PlayMode::read_notes(std::string song_name) {
 	notes.clear();
 
+	active_skin_idx = std::rand() % 2;
+
 	// https://www.tutorialspoint.com/read-file-line-by-line-using-cplusplus
 	std::fstream file;
 	const char* delim = " ";
@@ -482,7 +484,6 @@ void PlayMode::read_notes(std::string song_name) {
 			note.min = note_mesh.min;
 			note.max = note_mesh.max;
 			note.dir = dir;
-			// this requires a bit more thinking on how to handle hold notes
 
 			note.scale = glm::vec3(0.2f, 0.2f, 0.2f);
 
@@ -604,8 +605,10 @@ void PlayMode::update_notes(float elapsed) {
 	auto current_time = std::chrono::high_resolution_clock::now();
 	float music_time = std::chrono::duration<float>(current_time - music_start_time).count();
 
-	health = std::max(0.0f, health - elapsed / 50.0f);
-	set_health_bar();
+	if (!is_tutorial) {
+		health = std::max(0.0f, health - elapsed / 50.0f);
+		set_health_bar();
+	}
 	if (health < EPS_F) game_over(false);
 	// std::cout << note_start_idx << " " << note_end_idx + 1 << "\n";
 	for (int i = note_start_idx; i < note_end_idx + 1; i++) {
@@ -830,11 +833,13 @@ void PlayMode::set_combo(int diff) {
 	Update function to a note, score / combo and health
 */
 void PlayMode::hit_note(NoteInfo* note, int hit_status) {
+
 	if (hit_status == -1) {
 		Sound::play(note_miss_sound);
 		set_combo(-combo);
-		set_health_bar();
+		if (is_tutorial) return;
 		health = std::max(0.0f, health - 0.1f);
+		set_health_bar();
 		if (health < EPS_F) game_over(false);
 		return;
 	}
@@ -847,8 +852,10 @@ void PlayMode::hit_note(NoteInfo* note, int hit_status) {
 			// bad hit, same as miss
 			Sound::play(note_miss_sound);
 			set_combo(-combo);
-			health = std::max(0.0f, health - 0.1f);
-			if (health < EPS_F) game_over(false);
+			if (!is_tutorial) {
+				health = std::max(0.0f, health - 0.1f);
+				if (health < EPS_F) game_over(false);
+			}
 			break;
 		case 1:
 			// ok hit
@@ -886,7 +893,9 @@ void PlayMode::hit_note(NoteInfo* note, int hit_status) {
 		case 6:
 			// hold during fail
 			set_combo(-combo);
-			health = std::max(0.0f, health - 0.0003f);
+			if (is_tutorial) {
+				health = std::max(0.0f, health - 0.0003f);
+			}
 			break;
 	}
 
@@ -1116,6 +1125,11 @@ void PlayMode::start_song(int idx, bool restart) {
 	game_state = PLAYING;
 	chosen_song = idx;
 
+	is_tutorial = false;
+	if (song_list[chosen_song].first == "Tutorial") {
+		is_tutorial = true;
+	}
+
 	music_start_time = std::chrono::high_resolution_clock::now(); // might want to reconsider if we want buffer time between starting the song and loading the level
 
 	// choose the song based on index
@@ -1267,9 +1281,6 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 		SDL_SetRelativeMouseMode(SDL_TRUE);
 		if (game_state != PLAYING) return true;
 		check_hit();
-		// auto current_time = std::chrono::high_resolution_clock::now();
-		// float music_time = std::chrono::duration<float>(current_time - music_start_time).count();
-		// std::cout << std::to_string(music_time) << std::endl;
 		holding = true;
 	} else if (evt.type == SDL_MOUSEBUTTONUP) {
 		if (game_state != PLAYING) return true;
@@ -1418,6 +1429,11 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 		float ofs = 2.0f / drawable_size.y;
 
 		if (game_state == MENU) {
+			lines.draw_text("Welcome to HellBEATer",
+				glm::vec3(-aspect + 0.3f + ofs, 0.7f, 0.0f),
+				glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+				glm::u8vec4(0xff, 0xff, 0xff, 0x00));
+
 			for (int i = hovering_text - 2; i < hovering_text + 3; i++) {
 				if (i < 0 || i >= (int)song_list.size()) continue;
 				std::string text = song_list[i].first;
@@ -1458,6 +1474,47 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 				glm::vec3(-aspect + 0.3f + ofs, 0.8f, 0.0f),
 				glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 				glm::u8vec4(0xff, 0xff, 0xff, 0x00));
+			
+			if (is_tutorial) {
+				auto current_time = std::chrono::high_resolution_clock::now();
+				float music_time = std::chrono::duration<float>(current_time - music_start_time).count();
+				if (music_time < 16.0f) {
+					lines.draw_text("Click enemies when they touch the square border",
+						glm::vec3(-aspect + 0.3f + ofs, -0.8f, 0.0f),
+						glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+						glm::u8vec4(0xff, 0xff, 0xff, 0x00));
+				} else if (music_time < 24.0f) {
+					lines.draw_text("Press X to change to BURST mode",
+						glm::vec3(-aspect + 0.3f + ofs, -0.8f, 0.0f),
+						glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+						glm::u8vec4(0xff, 0xff, 0xff, 0x00));
+				} else if (music_time < 32.0f) {
+					lines.draw_text("Click enemies when they touch the square border",
+						glm::vec3(-aspect + 0.3f + ofs, -0.8f, 0.0f),
+						glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+						glm::u8vec4(0xff, 0xff, 0xff, 0x00));
+				} else if (music_time < 40.0f) {
+					lines.draw_text("Press X to change to HOLD mode",
+						glm::vec3(-aspect + 0.3f + ofs, -0.8f, 0.0f),
+						glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+						glm::u8vec4(0xff, 0xff, 0xff, 0x00));
+				} else if (music_time < 56.0f) {
+					lines.draw_text("Hold click and follow enemies as they touch the square border",
+						glm::vec3(-aspect + 0.3f + ofs, -0.8f, 0.0f),
+						glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+						glm::u8vec4(0xff, 0xff, 0xff, 0x00));
+				} else if (music_time < 64.0f) {
+					lines.draw_text("Press X to change to SINGLE mode",
+						glm::vec3(-aspect + 0.3f + ofs, -0.8f, 0.0f),
+						glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+						glm::u8vec4(0xff, 0xff, 0xff, 0x00));
+				} else if (music_time < 92.0f) {
+					lines.draw_text("You can also press Z to go backwards",
+						glm::vec3(-aspect + 0.3f + ofs, -0.8f, 0.0f),
+						glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+						glm::u8vec4(0xff, 0xff, 0xff, 0x00));
+				}
+			}
 		} else if (game_state == PAUSED) {
 			for (int i = hovering_text - 2; i < hovering_text + 3; i++) {
 				if (i < 0 || i >= (int)option_texts.size()) continue;

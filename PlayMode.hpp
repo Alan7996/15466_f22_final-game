@@ -176,6 +176,8 @@ struct PlayMode : Mode {
 	float const health_right_cutoff = 0.97f;
 	float const health_left_cutoff = 0.01f;
 
+	bool is_tutorial = false;
+
 	bool song_cleared = false;
 	std::chrono::time_point<std::chrono::high_resolution_clock> song_clear_time;
 
