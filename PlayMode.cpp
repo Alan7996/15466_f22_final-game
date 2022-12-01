@@ -506,25 +506,25 @@ void PlayMode::read_notes(std::string song_name) {
 
 					Scene::Transform *transform = new Scene::Transform;
 					transform->name = "Note";
-					transform->position = glm::vec3((coords_begin.x + coords_end.x) / 2.0f, (coords_begin.y + coords_end.y) / 2.0f, init_note_depth);
+					transform->position = glm::vec3((coords_begin.x + coords_end.x) / 2.0f, (coords_begin.y + coords_end.y) / 2.0f, init_note_depth - (time_end - time_begin) * note_speed / 2.0f);
 					transform->scale = glm::vec3(0.0f, 0.0f, 0.0f); // all notes start from being invisible
 					float angle = 0.0f;
 					// if the xs are the same
 					if(dir == "left") {
 						angle = -atan2((coords_begin.y - coords_end.y), (time_end - time_begin) * note_speed);
-						transform->rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f) * normalize(glm::angleAxis(angle, glm::vec3(1.0f, 0.0f, 0.0f)));
+						transform->rotation = normalize(glm::angleAxis(angle, glm::vec3(1.0f, 0.0f, 0.0f)) * glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
 					}
 					else if (dir == "right") {
 						angle = -atan2((coords_begin.y - coords_end.y), (time_end - time_begin) * note_speed);
-						transform->rotation = glm::quat(0.0f, 0.0f, 1.0f, 0.0f) * glm::quat(0.0f, 1.0f, 0.0f, 0.0f) * normalize(glm::angleAxis(angle, glm::vec3(1.0f, 0.0f, 0.0f)));
+						transform->rotation = normalize(glm::angleAxis(angle, glm::vec3(1.0f, 0.0f, 0.0f)) * (glm::quat(0.0f, 0.0f, 1.0f, 0.0f) * glm::quat(0.0f, 1.0f, 0.0f, 0.0f)));
 					}
 					else if (dir == "up") {
 						angle = atan2((coords_begin.x - coords_end.x), (time_end - time_begin) * note_speed);
-						transform->rotation = glm::quat(0.7071f, 0.0f, 0.0f, -0.7071f) * normalize(glm::angleAxis(angle, glm::vec3(0.0f, 1.0f, 0.0f)));;
+						transform->rotation = normalize(glm::angleAxis(angle, glm::vec3(0.0f, 1.0f, 0.0f)) * glm::quat(0.7071f, 0.0f, 0.0f, -0.7071f));;
 					}
 					else {
 						angle = atan2((coords_begin.x - coords_end.x), (time_end - time_begin) * note_speed);
-						transform->rotation = glm::quat(0.7071f, 0.0f, 0.0f, 0.7071f) * normalize(glm::angleAxis(angle, glm::vec3(0.0f, 1.0f, 0.0f)));;
+						transform->rotation = normalize(glm::angleAxis(angle, glm::vec3(0.0f, 1.0f, 0.0f)) * glm::quat(0.7071f, 0.0f, 0.0f, 0.7071f));;
 					}
 					note.note_transforms.push_back(transform);
 					note.hit_times.push_back(time_begin + real_song_offset);
@@ -641,7 +641,7 @@ void PlayMode::update_notes(float elapsed) {
 						if (music_time >= note.hit_times[j] - note_approach_time) {
 							// spawn the note
 							note.is_active = true;
-							note.note_transforms[j]->scale = glm::vec3(0.5f, 0.5f, note_speed * (note.hit_times[j+1] - note.hit_times[j]));
+							note.note_transforms[j]->scale = glm::vec3(0.5f, 0.5f, note_speed * (note.hit_times[j+1] - note.hit_times[j]) / 4.0f);
 							note.note_transforms[j]->position.z = init_note_depth - (note.hit_times[j+1] - note.hit_times[j]) / 2;
 							// std::cout << note.note_transforms[j]->position.x << " " << note.note_transforms[j]->position.y << " " << note.note_transforms[j]->position.z << "\n";
 							// std::cout << note.note_transforms[j]->scale.x << " " << note.note_transforms[j]->scale.y << " " << note.note_transforms[j]->scale.z << "\n";
@@ -754,9 +754,9 @@ HitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 			// do bbox intersection
 			if(bbox_intersect(start, direction, note.min, note.max, t)) {
 				//std::cout << "single\n";
-				glm::vec3 point = start + direction * t;
-				std::cout << "single start point " << start.x << " " << start.y << " " << start.z << "\n";
-				std::cout << "single end point " << point.x << " " << point.y << " " << point.z << "\n";
+				// glm::vec3 point = start + direction * t;
+				// std::cout << "single start point " << start.x << " " << start.y << " " << start.z << "\n";
+				// std::cout << "single end point " << point.x << " " << point.y << " " << point.z << "\n";
 				HitInfo hits;
 				hits.note = &notes[i];
 				hits.time = t;
@@ -780,9 +780,9 @@ HitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 			// do bbox intersection
 			if(bbox_intersect(start, direction, note.min, note.max, t)) {
 				//std::cout << "burst\n";
-				glm::vec3 point = start + direction * t;
-				std::cout << "burst start point " << start.x << " " << start.y << " " << start.z << "\n";
-				std::cout << "burst end point " << point.x << " " << point.y << " " << point.z << "\n";
+				// glm::vec3 point = start + direction * t;
+				// std::cout << "burst start point " << start.x << " " << start.y << " " << start.z << "\n";
+				// std::cout << "burst end point " << point.x << " " << point.y << " " << point.z << "\n";
 				HitInfo hits;
 				hits.note = &notes[i];
 				hits.time = t;
@@ -806,9 +806,9 @@ HitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 			if(bbox_intersect(start, direction, note.min, note.max, t)) {
 				// initial click (whether it's the start or not)
 				//std::cout << "hold\n";
-				glm::vec3 point = start + direction * t;
-				std::cout << "hold start point " << start.x << " " << start.y << " " << start.z << "\n";
-				std::cout << "hold end point " << point.x << " " << point.y << " " << point.z << "\n";
+				// glm::vec3 point = start + direction * t;
+				// std::cout << "hold start point " << start.x << " " << start.y << " " << start.z << "\n";
+				// std::cout << "hold end point " << point.x << " " << point.y << " " << point.z << "\n";
 				HitInfo hits;
 				hits.note = &notes[i];
 				hits.time = t;
@@ -945,13 +945,13 @@ void PlayMode::check_hit(bool mouse_down=true) {
 				// std::cout << coord[0] << " " << coord[1] << " " << music_time << " " << hits.note->hit_times[0] + real_song_offset << "\n";
 				glm::vec3 end = glm::vec3(inverse * glm::vec4(coord.x, coord.y, border_depth, 1.0f));
 				float dist = glm::distance(start, end);
-				std::cout << "start: " << start.x << " " << start.y << " " << start.z << "\n";
-				std::cout << "end border depth: " << end.x << " " << end.y << " " << end.z << "\n";
+				// std::cout << "start: " << start.x << " " << start.y << " " << start.z << "\n";
+				// std::cout << "end border depth: " << end.x << " " << end.y << " " << end.z << "\n";
 				end = glm::vec3(inverse * glm::vec4(coord.x, coord.y, 2.5f, 1.0f));
-				std::cout << "end 2.5: " << end.x << " " << end.y << " " << end.z << "\n";
-				std::cout << "\n";
+				// std::cout << "end 2.5: " << end.x << " " << end.y << " " << end.z << "\n";
 				// std::cout << dist << " " << hits.time << "\n";
-				if(gun_mode == 2 && dist - 2 < hits.time && hits.time < dist + 2) {
+				// std::cout << "\n";
+				if(gun_mode == 2 && dist - 0.5 < hits.time && hits.time < dist + 0.5) {
 					hit_note(hits.note, 5);
 					// std::cout << "score: " << score << ", still hitting\n";		
 				}
@@ -1271,9 +1271,9 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 		SDL_SetRelativeMouseMode(SDL_TRUE);
 		if (game_state != PLAYING) return true;
 		check_hit();
-		auto current_time = std::chrono::high_resolution_clock::now();
-		float music_time = std::chrono::duration<float>(current_time - music_start_time).count();
-		std::cout << std::to_string(music_time) << std::endl;
+		// auto current_time = std::chrono::high_resolution_clock::now();
+		// float music_time = std::chrono::duration<float>(current_time - music_start_time).count();
+		// std::cout << std::to_string(music_time) << std::endl;
 		holding = true;
 	} else if (evt.type == SDL_MOUSEBUTTONUP) {
 		if (game_state != PLAYING) return true;
