@@ -304,7 +304,7 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 		d2.pipeline.start = border_drawable.start;
 		d2.pipeline.count = border_drawable.count;
 
-		int num_walls = 2;
+		size_t num_walls = 2;
 
 		bg_transforms.resize(4 * num_walls + 2);
 		bgscale = abs(init_note_depth - max_depth);
