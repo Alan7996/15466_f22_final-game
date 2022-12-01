@@ -1024,16 +1024,16 @@ void PlayMode::change_gun(int idx_change, int manual_idx=-1) {
 void PlayMode::reset_song() {
 	// reset loaded assets
 	if (active_song) active_song->stop();
-	scene.drawables.erase(std::prev(scene.drawables.end(), notes.size()), scene.drawables.end());
-	read_notes(song_list[chosen_song].first);
-	// for (auto &note: notes) {
-	// 	note.been_hit = false;
-	// 	note.is_active = false;
-	// 	for (uint64_t i = 0; i < note.note_transforms.size(); i++) {
-	// 		note.note_transforms[i]->position.z = init_note_depth;
-	// 		note.note_transforms[i]->scale = glm::vec3(0.0f, 0.0f, 0.0f);
-	// 	}
-	// }
+	// scene.drawables.erase(std::prev(scene.drawables.end(), notes.size()), scene.drawables.end());
+	// read_notes(song_list[chosen_song].first);
+	for (auto &note: notes) {
+		note.been_hit = false;
+		note.is_active = false;
+		for (uint64_t i = 0; i < note.note_transforms.size(); i++) {
+			note.note_transforms[i]->position.z = init_note_depth;
+			note.note_transforms[i]->scale = glm::vec3(0.0f, 0.0f, 0.0f);
+		}
+	}
 }
 
 /*
