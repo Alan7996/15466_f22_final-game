@@ -160,7 +160,8 @@ Load< GLuint > load_tex_clear(LoadTagDefault, [](){
 			Initialize list of songs to play for each level (at the moment, only one)
 */ 
 PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_sound(*note_miss) {
-	SDL_SetRelativeMouseMode(SDL_TRUE);
+
+	game_state = GAMEOVER;
 
 	meshBuf = new MeshBuffer(data_path("main.pnct"));
 
@@ -584,7 +585,6 @@ void PlayMode::read_notes(std::string song_name) {
 	Switches between two backgrounds on each direction to create an effect of it being infinite
 */
 void PlayMode::update_bg(float elapsed) {
-	assert(game_state == PLAYING);
 
 	for (size_t i = 0; i < bg_transforms.size() - 2; i++) {
 		bg_transforms[i]->position.z = bg_transforms[i]->position.z + note_speed * elapsed;
@@ -1033,8 +1033,6 @@ void PlayMode::change_gun(int idx_change, int manual_idx=-1) {
 void PlayMode::reset_song() {
 	// reset loaded assets
 	if (active_song) active_song->stop();
-	// scene.drawables.erase(std::prev(scene.drawables.end(), notes.size()), scene.drawables.end());
-	// read_notes(song_list[chosen_song].first);
 	for (auto &note: notes) {
 		note.been_hit = false;
 		note.is_active = false;
@@ -1212,6 +1210,7 @@ void PlayMode::game_over(bool did_clear) {
 		game_state = GAMEOVER;
 		bg_transforms[9]->position = glm::vec3(0.0f, 0.0f, 2.0f);
 	}
+	SDL_SetRelativeMouseMode(SDL_FALSE);
 }
 
 /*
@@ -1230,10 +1229,10 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 			if (evt.key.keysym.sym == SDLK_RETURN) {
 				start_song(hovering_text, false);
 				return true;
-			} else if (evt.key.keysym.sym == SDLK_UP || evt.key.keysym.sym == SDLK_i) {
+			} else if (evt.key.keysym.sym == SDLK_UP) {
 				hovering_text = hovering_text == 0 ? 0 : hovering_text - 1;
 				return true;
-			} else if (evt.key.keysym.sym == SDLK_DOWN || evt.key.keysym.sym == SDLK_k) {
+			} else if (evt.key.keysym.sym == SDLK_DOWN) {
 				hovering_text = hovering_text == static_cast<uint8_t>(song_list.size()) - 1? static_cast<uint8_t>(song_list.size()) - 1: hovering_text + 1;
 				return true;
 			} else if (evt.key.keysym.sym == SDLK_ESCAPE) {
@@ -1264,10 +1263,10 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 				else if (hovering_text == 1) {restart_song(); return true;}
 				else if (hovering_text == 2) {to_menu(); return true;}
 			}
-			else if (evt.key.keysym.sym == SDLK_UP || evt.key.keysym.sym == SDLK_i) {
+			else if (evt.key.keysym.sym == SDLK_UP) {
 				hovering_text = hovering_text == 0 ? 0 : hovering_text - 1;
 				return true;
-			} else if (evt.key.keysym.sym == SDLK_DOWN || evt.key.keysym.sym == SDLK_k) {
+			} else if (evt.key.keysym.sym == SDLK_DOWN) {
 				hovering_text = hovering_text == static_cast<uint8_t>(option_texts.size()) - 1? static_cast<uint8_t>(option_texts.size()) - 1: hovering_text + 1;
 				return true;
 			}if (evt.key.keysym.sym == SDLK_ESCAPE) {
@@ -1280,10 +1279,10 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 				if (hovering_text == 0) {restart_song(); return true;}
 				else if (hovering_text == 1) {to_menu(); return true;}
 			}
-			else if (evt.key.keysym.sym == SDLK_UP || evt.key.keysym.sym == SDLK_i) {
+			else if (evt.key.keysym.sym == SDLK_UP) {
 				hovering_text = hovering_text == 0 ? 0 : hovering_text - 1;
 				return true;
-			} else if (evt.key.keysym.sym == SDLK_DOWN || evt.key.keysym.sym == SDLK_k) {
+			} else if (evt.key.keysym.sym == SDLK_DOWN) {
 				hovering_text = hovering_text == static_cast<uint8_t>(songover_texts.size()) - 1? static_cast<uint8_t>(songover_texts.size()) - 1: hovering_text + 1;
 				return true;
 			}if (evt.key.keysym.sym == SDLK_ESCAPE) {
@@ -1293,7 +1292,6 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 		}
 	}
 	else if (evt.type == SDL_MOUSEBUTTONDOWN) {
-		SDL_SetRelativeMouseMode(SDL_TRUE);
 		if (game_state != PLAYING) return true;
 		check_hit();
 		holding = true;
@@ -1350,6 +1348,8 @@ void PlayMode::update(float elapsed) {
 		if (song_cleared && std::chrono::duration<float>(std::chrono::high_resolution_clock::now() - song_clear_time).count() > 3.0f) {
 			game_over(true);
 		}
+	} else if (game_state == MENU) {
+		update_bg(elapsed);
 	}
 }
 
@@ -1450,8 +1450,13 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 		float ofs = 2.0f / drawable_size.y;
 
 		if (game_state == MENU) {
-			lines.draw_text("Welcome to HellBEATer",
+			lines.draw_text("Dungeon Beats",
 				glm::vec3(-aspect + 0.3f + ofs, 0.7f, 0.0f),
+				glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+				glm::u8vec4(0xff, 0xff, 0xff, 0x00));
+
+			lines.draw_text("ESC to Exit",
+				glm::vec3(aspect - 0.7f + ofs, -0.8f, 0.0f),
 				glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 				glm::u8vec4(0xff, 0xff, 0xff, 0x00));
 
