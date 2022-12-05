@@ -1319,7 +1319,7 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 
 		//update camera aspect ratio for drawable:
 		camera->transform->rotation =
-			normalize(glm::angleAxis(cam.azimuth, glm::vec3(0.0f, 1.0f, 0.0f))
+			normalize(glm::angleAxis(1280.0f / 720.0f * cam.azimuth, glm::vec3(0.0f, 1.0f, 0.0f))
 			* glm::angleAxis(0.5f * 3.1415926f + -cam.elevation, glm::vec3(1.0f, 0.0f, 0.0f)));
 
 		camera->transform->scale = glm::vec3(1.0f);
