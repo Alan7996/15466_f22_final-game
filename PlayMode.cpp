@@ -135,8 +135,16 @@ Load< GLuint > load_tex_wall_down(LoadTagDefault, [](){
 	return new GLuint(load_texture(data_path("textures/wall_down.png")));
 });
 
-Load< GLuint > load_tex_wall_center(LoadTagDefault, [](){
-	return new GLuint(load_texture(data_path("textures/wall_center.png")));
+// Load< GLuint > load_tex_wall_center(LoadTagDefault, [](){
+// 	return new GLuint(load_texture(data_path("textures/wall_center.png")));
+// });
+
+Load< GLuint > load_tex_game_over(LoadTagDefault, [](){
+	return new GLuint(load_texture(data_path("textures/game_over.png")));
+});
+
+Load< GLuint > load_tex_clear(LoadTagDefault, [](){
+	return new GLuint(load_texture(data_path("textures/clear.png")));
 });
 
 /*
@@ -307,7 +315,6 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 		size_t num_walls = 2;
 
 		bg_transforms.resize(4 * num_walls + 2);
-		bgscale = abs(init_note_depth - max_depth);
 
 		for (size_t i = 0; i < bg_transforms.size(); i++) {
 			GLuint tex_ind = 0;
@@ -361,12 +368,14 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 				case 8: // Center front
 					bg_transforms[i]->position = glm::vec3(0, 0, -bgscale);
 					bg_transforms[i]->scale = glm::vec3(bgscale, bgscale, 1);
-					tex_ind = *load_tex_wall_center;
+					bg_transforms[i]->rotation = glm::angleAxis(glm::degrees((float)M_PI), glm::vec3(0.0f, 1.0f, 0.0f));
+					tex_ind = *load_tex_clear;
 					break;
 				case 9: // Center back
 					bg_transforms[i]->position = glm::vec3(0, 0, bgscale);
 					bg_transforms[i]->scale = glm::vec3(5.0f * x_scale, 5.0f * y_scale, 1);
-					tex_ind = *load_tex_wall_center;
+					bg_transforms[i]->rotation = glm::angleAxis(glm::degrees((float)M_PI), glm::vec3(0.0f, 1.0f, 0.0f));
+					tex_ind = *load_tex_game_over;
 					break;
 			}
 			scene.drawables.emplace_back(bg_transforms[i]);
@@ -391,8 +400,8 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 		song_list.emplace_back(std::make_pair("The Beginning", *load_song_the_beginning));
 		song_list.emplace_back(std::make_pair("Hellbound", *load_song_hellbound));
 		song_list.emplace_back(std::make_pair("Halloween Madness", *load_song_halloween_madness));
-		// song_list.emplace_back(std::make_pair("Burst Is Supreme", *load_song_tutorial));
-		// song_list.emplace_back(std::make_pair("All Hail Hold", *load_song_tutorial));
+		song_list.emplace_back(std::make_pair("Burst Is Supreme", *load_song_tutorial));
+		song_list.emplace_back(std::make_pair("All Hail Hold", *load_song_tutorial));
 
 		to_menu();
 	}
@@ -1047,6 +1056,7 @@ void PlayMode::to_menu() {
 	game_state = MENU;
 	hovering_text = (uint8_t)chosen_song;
 
+	bg_transforms[8]->position = glm::vec3(0.0f, 0.0f, -bgscale);
 	bg_transforms[9]->position = glm::vec3(0.0f, 0.0f, bgscale);
 
 	for (int i = 0; i < 3; i++) {
@@ -1059,9 +1069,9 @@ void PlayMode::to_menu() {
 	border_transform->scale = glm::vec3();
 
 	if (notes.size() >= 1) {
-        	reset_song();
-        	scene.drawables.erase(std::prev(scene.drawables.end(), notes.size()), scene.drawables.end());
-    	}
+		reset_song();
+		scene.drawables.erase(std::prev(scene.drawables.end(), notes.size()), scene.drawables.end());
+	}
 	reset_cam();
 
 	// stop currently playing song
@@ -1147,7 +1157,8 @@ void PlayMode::start_song(int idx, bool restart) {
 		restart_song should only be called when going from PLAYING -> PAUSED -> select RESTART
 */
 void PlayMode::restart_song() {
-	bg_transforms[9]->position = glm::vec3(0.0f, 0.0f, 10.0f);
+	bg_transforms[8]->position = glm::vec3(0.0f, 0.0f, -bgscale);
+	bg_transforms[9]->position = glm::vec3(0.0f, 0.0f, bgscale);
 	reset_song();
 	has_started = false;
 	start_song(chosen_song, true);
@@ -1184,7 +1195,6 @@ void PlayMode::unpause_song() {
 void PlayMode::game_over(bool did_clear) {
 	reset_cam();
 	if (active_song) active_song->set_volume(0.0f, 3.0f);
-	bg_transforms[9]->position = glm::vec3(0.0f, 0.0f, 2.0f);
 
 	healthbar_transform->scale = glm::vec3();
 	healthbarleft_transform->scale = glm::vec3();
@@ -1196,9 +1206,11 @@ void PlayMode::game_over(bool did_clear) {
 	if (did_clear) {
 		// std::cout << "song cleared!\n";
 		game_state = SONGCLEAR;
+		bg_transforms[8]->position = glm::vec3(0.0f, 0.0f, 2.0f);
 	} else {
 		// std::cout << "song failed!\n";
 		game_state = GAMEOVER;
+		bg_transforms[9]->position = glm::vec3(0.0f, 0.0f, 2.0f);
 	}
 }
 
@@ -1400,6 +1412,12 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 	light_type.emplace_back(2);
 	light_cutoff.emplace_back(1.0f);
 
+	// light_location.emplace_back(camera->transform->position + glm::vec3(0.0f, 3.0f, 50.0f));
+	// light_direction.emplace_back(glm::vec3(0.0f, 0.0f, -1.0f));
+	// light_energy.emplace_back(glm::vec3(10.0f, 10.0f, 10.0f));
+	// light_type.emplace_back(3);
+	// light_cutoff.emplace_back(1.0f);
+
 	glUseProgram(lit_color_texture_program->program);
 	glUniform1ui(lit_color_texture_program->LIGHTS_uint, lights);
 	glUniform1iv(lit_color_texture_program->LIGHT_TYPE_int, lights, light_type.data());
@@ -1551,7 +1569,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 					glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 					glm::u8vec4(0xff, 0xff, 0xff, 0x00));
 			}
-			lines.draw_text("SONG CLEARED!",
+			lines.draw_text("CLEARED " + song_list[chosen_song].first + "!",
 				glm::vec3(-0.3f, 0.5f, 0.0f),
 				glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 				glm::u8vec4(0xff, 0xff, 0xff, 0x00));
@@ -1577,7 +1595,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 					glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 					glm::u8vec4(0xff, 0xff, 0xff, 0x00));
 			}
-			lines.draw_text("LEVEL FAILED...",
+			lines.draw_text("FAILED " + song_list[chosen_song].first + "...",
 				glm::vec3(-0.3f, 0.5f, 0.0f),
 				glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 				glm::u8vec4(0xff, 0xff, 0xff, 0x00));

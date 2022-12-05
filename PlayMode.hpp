@@ -199,7 +199,7 @@ struct PlayMode : Mode {
 	float real_song_offset = 0.00f;
 	float note_speed = (border_depth - init_note_depth) / note_approach_time;
 
-	float bgscale;
+	float bgscale = abs(init_note_depth - max_depth);;
 
 	float mouse_sens = 0.4f;
 	float const mouse_sens_min = 0.1f;
