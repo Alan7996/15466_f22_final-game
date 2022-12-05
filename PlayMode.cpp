@@ -59,42 +59,40 @@ Load< Scene > main_scene(LoadTagDefault, []() -> Scene const * {
 });
 
 /*
-	Load in song to play when we hit a note
+	Load in sfx to play when we hit a note
 */
 Load< Sound::Sample > note_hit(LoadTagDefault, []() -> Sound::Sample const * {
-	return new Sound::Sample(data_path("Note_hit.wav"));
+	return new Sound::Sample(data_path("Note_hit.opus"));
 });
 
 /*
-	Load in song to play when we miss a note
+	Load in sfx to play when we miss a note
 */
 Load< Sound::Sample > note_miss(LoadTagDefault, []() -> Sound::Sample const * {
-	return new Sound::Sample(data_path("Note_miss.wav"));
+	return new Sound::Sample(data_path("Note_miss.opus"));
 });
 
 /*
-	Load in song to play from Tutorial.wav
-	
-	// TODO: Would like to generalize this load_song function to take in string input and load string.wav file
+	Load in songs to play from songs/ folder
 */
 Load< Sound::Sample > load_song_tutorial(LoadTagDefault, []() -> Sound::Sample const * {
-	return new Sound::Sample(data_path("songs/Tutorial.wav"));
+	return new Sound::Sample(data_path("songs/Tutorial.opus"));
 });
 
 Load< Sound::Sample > load_song_the_beginning(LoadTagDefault, []() -> Sound::Sample const * {
-	return new Sound::Sample(data_path("songs/The Beginning.wav"));
+	return new Sound::Sample(data_path("songs/The Beginning.opus"));
 });
 
 Load< Sound::Sample > load_song_hellbound(LoadTagDefault, []() -> Sound::Sample const * {
-	return new Sound::Sample(data_path("songs/Hellbound.wav"));
+	return new Sound::Sample(data_path("songs/Hellbound.opus"));
 });
 
 Load< Sound::Sample > load_song_halloween_madness(LoadTagDefault, []() -> Sound::Sample const * {
-	return new Sound::Sample(data_path("songs/Halloween Madness.wav"));
+	return new Sound::Sample(data_path("songs/Halloween Madness.opus"));
 });
 
 Load< Sound::Sample > load_song_menu(LoadTagDefault, []() -> Sound::Sample const * {
-	return new Sound::Sample(data_path("Menu_background.wav"));
+	return new Sound::Sample(data_path("Menu_background.opus"));
 });
 
 // From: https://github.com/ixchow/15-466-f18-base3/blob/586f23cf0bbaf80e8e70277442c4e0de7e7612f5/GameMode.cpp#L95-L113
