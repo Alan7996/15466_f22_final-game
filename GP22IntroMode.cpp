@@ -587,6 +587,7 @@ bool GP22IntroMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_
 	if (evt.type == SDL_KEYDOWN) {
 		//on any key press, skip the rest of the intro:
 		music->set_volume(0.0f, 1.0f / 10.0f);
+		glDisable(GL_BLEND);
 		Mode::set_current(next_mode);
 		return true;
 	}
@@ -597,6 +598,7 @@ void GP22IntroMode::update(float elapsed) {
 	time += elapsed;
 	if (time > 10.0f) {
 		music->set_volume(0.0f, 1.0f / 10.0f);
+		glDisable(GL_BLEND);
 		Mode::set_current(next_mode);
 		//Mode::set_current(std::make_shared< GP22IntroMode >(next_mode)); //<--- loop forever for testing
 		return;
