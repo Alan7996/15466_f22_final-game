@@ -19,6 +19,8 @@
 //Includes for libSDL:
 #include <SDL.h>
 
+#include "GP22IntroMode.hpp"
+
 //...and for c++ standard library functions:
 #include <chrono>
 #include <iostream>
@@ -113,6 +115,7 @@ int main(int argc, char **argv) {
 
 	//------------ create game mode + make current --------------
 	Mode::set_current(std::make_shared< PlayMode >());
+	// Mode::set_current(std::make_shared< GP22IntroMode >( std::make_shared< PlayMode >() ));
 
 	//------------ main loop ------------
 
