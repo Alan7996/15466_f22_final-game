@@ -1508,31 +1508,36 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 						glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 						glm::u8vec4(0xff, 0xff, 0xff, 0x00));
 				} else if (music_time < 24.0f) {
+					lines.draw_text("Press +/- to increase/decrease mouse sensitivity",
+						glm::vec3(-aspect + 0.3f + ofs, -0.8f, 0.0f),
+						glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+						glm::u8vec4(0xff, 0xff, 0xff, 0x00));
+				} else if (music_time < 36.0f) {
 					lines.draw_text("Press X to change to BURST mode",
 						glm::vec3(-aspect + 0.3f + ofs, -0.8f, 0.0f),
 						glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 						glm::u8vec4(0xff, 0xff, 0xff, 0x00));
-				} else if (music_time < 32.0f) {
+				} else if (music_time < 42.0f) {
 					lines.draw_text("Click enemies when they touch the square border",
 						glm::vec3(-aspect + 0.3f + ofs, -0.8f, 0.0f),
 						glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 						glm::u8vec4(0xff, 0xff, 0xff, 0x00));
-				} else if (music_time < 40.0f) {
+				} else if (music_time < 56.0f) {
 					lines.draw_text("Press X to change to HOLD mode",
 						glm::vec3(-aspect + 0.3f + ofs, -0.8f, 0.0f),
 						glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 						glm::u8vec4(0xff, 0xff, 0xff, 0x00));
-				} else if (music_time < 56.0f) {
+				} else if (music_time < 64.0f) {
 					lines.draw_text("Hold click and follow enemies as they touch the square border",
 						glm::vec3(-aspect + 0.3f + ofs, -0.8f, 0.0f),
 						glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 						glm::u8vec4(0xff, 0xff, 0xff, 0x00));
-				} else if (music_time < 64.0f) {
+				} else if (music_time < 72.0f) {
 					lines.draw_text("Press X to change to SINGLE mode",
 						glm::vec3(-aspect + 0.3f + ofs, -0.8f, 0.0f),
 						glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
 						glm::u8vec4(0xff, 0xff, 0xff, 0x00));
-				} else if (music_time < 92.0f) {
+				} else if (music_time < 100.0f) {
 					lines.draw_text("You can also press Z to go backwards",
 						glm::vec3(-aspect + 0.3f + ofs, -0.8f, 0.0f),
 						glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),

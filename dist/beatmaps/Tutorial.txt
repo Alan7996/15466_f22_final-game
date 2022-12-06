@@ -4,20 +4,24 @@ single 2 down  0.0 @ 10
 single 3 right 0.0 @ 12
 single 0 up    0.0 @ 14
 single 1 left  0.0 @ 16
-burst  4 down  0.0 @ 26
-burst  5 right 0.0 @ 28
-burst  6 up    0.0 @ 30
-burst  4 left  0.0 @ 32
-hold   7 down  -0.25 0.25 @ 40 43
-hold   7 right -0.25 0.25 @ 44 47
-hold   7 up    0.25 -0.25 @ 48 51
-hold   7 left  0.25 -0.25 @ 52 55
-single 0 down  -0.5 @ 64
-single 0 down  0.0 @ 66
-single 0 down  0.5 @ 68
-hold   7 down  0.5 0.0 @ 72 75
-hold   7 down  0.0 -0.5 @ 76 79
-burst  4 down  -0.5 @ 84
-burst  5 down  0.0 @ 86
-burst  6 down  0.5 @ 88
-single 0 down  0 @ 92
+single 0 down  0.0 @ 24
+single 1 right 0.0 @ 26
+single 2 up    0.0 @ 28
+single 3 left  0.0 @ 30
+burst  4 down  0.0 @ 34
+burst  5 right 0.0 @ 36
+burst  6 up    0.0 @ 38
+burst  4 left  0.0 @ 40
+hold   7 down  -0.25 0.25 @ 48 51
+hold   7 right -0.25 0.25 @ 52 55
+hold   7 up    0.25 -0.25 @ 56 59
+hold   7 left  0.25 -0.25 @ 60 63
+single 0 down  -0.5 @ 72
+single 0 down  0.0 @ 74
+single 0 down  0.5 @ 76
+hold   7 down  0.5 0.0 @ 80 83
+hold   7 down  0.0 -0.5 @ 84 87
+burst  4 down  -0.5 @ 92
+burst  5 down  0.0 @ 94
+burst  6 down  0.5 @ 96
+single 0 down  0 @ 98
