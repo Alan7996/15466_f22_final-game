@@ -29,6 +29,8 @@ enum NoteType : uint16_t {
 // TODO: Consider which informations is really necessary
 // TODO: change the vectors to singular values
 struct NoteInfo {
+	int note_idx;
+
 	std::vector<Scene::Transform *> note_transforms;
 	std::vector<float> hit_times;
 	NoteType noteType = NoteType::SINGLE;
@@ -45,6 +47,8 @@ struct NoteInfo {
 	// hit will keep re-activating
 	bool been_hit = false;
 	bool is_active = false;
+
+	float delete_time = 0.5f;
 };
 
 // struct for intersection functions
@@ -118,6 +122,11 @@ struct PlayMode : Mode {
 
 	// vector containing all note infos of a song
 	std::vector<NoteInfo> notes;
+
+	// storage for perfect / good / miss hits
+	Drawable hit_perfect;
+	Drawable hit_good;
+	Drawable hit_miss;
 	
 	// vector containing a name and a vector of skins
 	std::vector< std::pair<std::string, std::vector<Drawable>> > beatmap_skins;
@@ -195,7 +204,7 @@ struct PlayMode : Mode {
 	float max_depth = 10.0f;
 	
 	float note_approach_time = 4.0f; // time between when the note shows up and hit time
-	float valid_hit_time_delta = 0.3f;
+	float valid_hit_time_delta = 0.5f;
 	float real_song_offset = 0.00f;
 	float note_speed = (border_depth - init_note_depth) / note_approach_time;
 

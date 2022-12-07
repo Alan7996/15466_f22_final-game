@@ -185,6 +185,18 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 			skin_christmas[idx].type = d.pipeline.type;
 			skin_christmas[idx].start = d.pipeline.start;
 			skin_christmas[idx].count = d.pipeline.count;
+		} else if (d.transform->name == "Perfect") {
+			hit_perfect.type = d.pipeline.type;
+			hit_perfect.start = d.pipeline.start;
+			hit_perfect.count = d.pipeline.count;
+		} else if (d.transform->name == "Good") {
+			hit_good.type = d.pipeline.type;
+			hit_good.start = d.pipeline.start;
+			hit_good.count = d.pipeline.count;
+		} else if (d.transform->name == "Miss") {
+			hit_miss.type = d.pipeline.type;
+			hit_miss.start = d.pipeline.start;
+			hit_miss.count = d.pipeline.count;
 		} else if (d.transform->name == "GunSingle") {
 			gun_drawables[0].type = d.pipeline.type;
 			gun_drawables[0].start = d.pipeline.start;
@@ -399,8 +411,6 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 		song_list.emplace_back(std::make_pair("The Beginning", *load_song_the_beginning));
 		song_list.emplace_back(std::make_pair("Hellbound", *load_song_hellbound));
 		song_list.emplace_back(std::make_pair("Halloween Madness", *load_song_halloween_madness));
-		song_list.emplace_back(std::make_pair("Burst Is Supreme", *load_song_tutorial));
-		song_list.emplace_back(std::make_pair("All Hail Hold", *load_song_tutorial));
 
 		to_menu();
 	}
@@ -479,6 +489,7 @@ void PlayMode::read_notes(std::string song_name) {
 	file.open(data_path("beatmaps/" + song_name + ".txt"), std::ios::in);
 	if (file.is_open()){
 		std::string line;
+		int note_idx_read = 0;
 		while(getline(file, line)){
 			std::vector<std::string> note_info;
 			tokenize(line, delim, note_info);
@@ -488,6 +499,7 @@ void PlayMode::read_notes(std::string song_name) {
 			int idx = (int) (find(note_info.begin(), note_info.end(), "@") - note_info.begin());
 
 			NoteInfo note;
+			note.note_idx = note_idx_read;
 			Mesh note_mesh = meshBuf->lookup(beatmap_skins[active_skin_idx].first + note_info[1]);
 			note.min = note_mesh.min;
 			note.max = note_mesh.max;
@@ -573,6 +585,8 @@ void PlayMode::read_notes(std::string song_name) {
 				d.pipeline.start = beatmap_skins[active_skin_idx].second[note_mesh_idx].start;
 				d.pipeline.count = beatmap_skins[active_skin_idx].second[note_mesh_idx].count;
 			}
+
+			note_idx_read += 1;
 		}
 		file.close();
 	}
@@ -617,7 +631,7 @@ void PlayMode::update_notes(float elapsed) {
 		set_health_bar();
 	}
 	if (health < EPS_F) game_over(false);
-	// std::cout << note_start_idx << " " << note_end_idx + 1 << "\n";
+
 	for (int i = note_start_idx; i < note_end_idx + 1; i++) {
 		if (i >= (int)notes.size()) continue;
 		auto &note = notes[i];
@@ -649,8 +663,6 @@ void PlayMode::update_notes(float elapsed) {
 							note.is_active = true;
 							note.note_transforms[j]->scale = glm::vec3(0.5f, 0.5f, note_speed * (note.hit_times[j+1] - note.hit_times[j]) / 4.0f);
 							note.note_transforms[j]->position.z = init_note_depth - (note.hit_times[j+1] - note.hit_times[j]) / 2;
-							// std::cout << note.note_transforms[j]->position.x << " " << note.note_transforms[j]->position.y << " " << note.note_transforms[j]->position.z << "\n";
-							// std::cout << note.note_transforms[j]->scale.x << " " << note.note_transforms[j]->scale.y << " " << note.note_transforms[j]->scale.z << "\n";
 							note_end_idx += 1;
 						}
 					}
@@ -660,6 +672,18 @@ void PlayMode::update_notes(float elapsed) {
 		// single and burst case - only one note_transform and hit_time
 		else {
 			if (note.is_active) {
+				if (note.been_hit){
+					if (note.delete_time > 0.0f) {
+						note.delete_time -= elapsed;
+					} else {
+						note.note_transforms[0]->scale = glm::vec3(0.0f, 0.0f, 0.0f);
+					}
+				} else {
+					// move the note
+					float delta_time = music_time - (note.hit_times[0] - note_approach_time);
+					note.note_transforms[0]->position.z = init_note_depth + note_speed * delta_time;
+				}
+
 				if (music_time > note.hit_times[0] + valid_hit_time_delta) {
 					// 'delete' the note
 					if (!note.been_hit) hit_note(nullptr, -1);
@@ -671,11 +695,6 @@ void PlayMode::update_notes(float elapsed) {
 						song_cleared = true;
 						song_clear_time = std::chrono::high_resolution_clock::now();
 					}
-				}
-				else {
-					// move the note
-					float delta_time = music_time - (note.hit_times[0] - note_approach_time);
-					note.note_transforms[0]->position.z = init_note_depth + note_speed * delta_time;
 				}
 			} else {
 				if (!note.been_hit) {
@@ -727,7 +746,7 @@ bool PlayMode::bbox_intersect(glm::vec3 pos, glm::vec3 dir, glm::vec3 min, glm::
 		t = tmax;
 		return false;
 	}
-	// std::cout << tmin << " " << tmax << "\n"; 
+	
 	t = tmin;
 	return true;
 }
@@ -749,6 +768,7 @@ HitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 
 		// single type
 		if (note.noteType == NoteType::SINGLE) {
+			if (note.been_hit) continue;
 			// get transform
 			Scene::Transform *trans = note.note_transforms[0];
 			// transform ray https://stackoverflow.com/questions/44630118/ray-transformation-in-a-ray-obb-intersection-test
@@ -759,10 +779,6 @@ HitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 			float t = 0.0f;
 			// do bbox intersection
 			if(bbox_intersect(start, direction, note.min, note.max, t)) {
-				//std::cout << "single\n";
-				// glm::vec3 point = start + direction * t;
-				// std::cout << "single start point " << start.x << " " << start.y << " " << start.z << "\n";
-				// std::cout << "single end point " << point.x << " " << point.y << " " << point.z << "\n";
 				HitInfo hits;
 				hits.note = &notes[i];
 				hits.time = t;
@@ -770,10 +786,8 @@ HitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 			}
 		}
 		// burst type
-		// currently we have one model containing all three notes
-		// this means we can shoot anything in between the three notes and it would count as a hit
-		// will need to change to adding two additional drawables for vertical slice
 		else if(note.noteType == NoteType::BURST) {
+			if (note.been_hit) continue;
 			// get transform
 			Scene::Transform *trans = note.note_transforms[0];
 			// transform ray https://stackoverflow.com/questions/44630118/ray-transformation-in-a-ray-obb-intersection-test
@@ -785,10 +799,6 @@ HitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 			float t = 0.0f;
 			// do bbox intersection
 			if(bbox_intersect(start, direction, note.min, note.max, t)) {
-				//std::cout << "burst\n";
-				// glm::vec3 point = start + direction * t;
-				// std::cout << "burst start point " << start.x << " " << start.y << " " << start.z << "\n";
-				// std::cout << "burst end point " << point.x << " " << point.y << " " << point.z << "\n";
 				HitInfo hits;
 				hits.note = &notes[i];
 				hits.time = t;
@@ -811,10 +821,6 @@ HitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 			// do bbox intersection
 			if(bbox_intersect(start, direction, note.min, note.max, t)) {
 				// initial click (whether it's the start or not)
-				//std::cout << "hold\n";
-				// glm::vec3 point = start + direction * t;
-				// std::cout << "hold start point " << start.x << " " << start.y << " " << start.z << "\n";
-				// std::cout << "hold end point " << point.x << " " << point.y << " " << point.z << "\n";
 				HitInfo hits;
 				hits.note = &notes[i];
 				hits.time = t;
@@ -822,7 +828,7 @@ HitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 			}
 		}
 		else {
-			//std::cout << "Incorrect note type breaks the game." << "\n";
+			// incorrect note type breaks the game
 			exit(1);
 		}
 	}
@@ -851,6 +857,9 @@ void PlayMode::hit_note(NoteInfo* note, int hit_status) {
 		return;
 	}
 
+	auto curr_note = std::prev(scene.drawables.end(), notes.size());
+	curr_note = std::next(curr_note, note->note_idx);
+
 	// deactivate the note
 	note->been_hit = true;
 
@@ -858,6 +867,11 @@ void PlayMode::hit_note(NoteInfo* note, int hit_status) {
 		case 0:
 			// bad hit, same as miss
 			Sound::play(note_miss_sound);
+
+			curr_note->pipeline.type = hit_miss.type;
+			curr_note->pipeline.start = hit_miss.start;
+			curr_note->pipeline.count = hit_miss.count;
+
 			set_combo(-combo);
 			if (!is_tutorial) {
 				health = std::max(0.0f, health - 0.1f);
@@ -865,15 +879,25 @@ void PlayMode::hit_note(NoteInfo* note, int hit_status) {
 			}
 			break;
 		case 1:
-			// ok hit
+			// good hit
 			Sound::play(note_hit_sound);
+
+			curr_note->pipeline.type = hit_good.type;
+			curr_note->pipeline.start = hit_good.start;
+			curr_note->pipeline.count = hit_good.count;
+
 			score += 50 * multiplier;
 			set_combo(1);
 			health = std::min(max_health, health + 0.03f);
 			break;
 		case 2:
-			// good hit
+			// perfect hit
 			Sound::play(note_hit_sound);
+
+			curr_note->pipeline.type = hit_perfect.type;
+			curr_note->pipeline.start = hit_perfect.start;
+			curr_note->pipeline.count = hit_perfect.count;
+
 			score += 100 * multiplier;
 			set_combo(1);
 			health = std::min(max_health, health + 0.03f);
@@ -881,6 +905,11 @@ void PlayMode::hit_note(NoteInfo* note, int hit_status) {
 		case 3:
 			// wrong gun hit
 			Sound::play(note_miss_sound);
+
+			curr_note->pipeline.type = hit_miss.type;
+			curr_note->pipeline.start = hit_miss.start;
+			curr_note->pipeline.count = hit_miss.count;
+
 			score += 10 * multiplier;
 			set_combo(-combo);
 			break;
@@ -904,15 +933,6 @@ void PlayMode::hit_note(NoteInfo* note, int hit_status) {
 				health = std::max(0.0f, health - 0.0003f);
 			}
 			break;
-	}
-
-	// TODO: fix this for hold
-	if(note->noteType == NoteType::HOLD) {
-		// at the moment, only one transform for hold
-
-	}
-	else {
-		note->note_transforms[0]->scale = glm::vec3(0.0f, 0.0f, 0.0f);
 	}
 
 	set_health_bar();
@@ -939,46 +959,33 @@ void PlayMode::check_hit(bool mouse_down=true) {
 			if(fabs(music_time - hits.note->hit_times[0]) < valid_hit_time_delta && !holding && mouse_down) {
 				// initial click
 				hit_note(hits.note, 4);
-				// std::cout << "score: " << score << ", first click hitting\n";
 			}
 			else if(fabs(hits.note->hit_times[1] - music_time) < valid_hit_time_delta && !holding && !mouse_down) {
 				// release near the end
 				hit_note(hits.note, 4);
-				// std::cout << "score: " << score << ", last click hitting\n";
 			}
 			else if (holding) {
 				// holding in between note
-				// TODO: fix the math on the next line
 				// want to do linear interpolation between the hit_times depending on how fast the note is approaching
 				glm::vec2 coord = get_coords(hits.note->dir, hits.note->coord_begin + (music_time - hits.note->hit_times[0] + real_song_offset) * (hits.note->coord_end - hits.note->coord_begin) / (hits.note->hit_times[1] - hits.note->hit_times[0]));
 				
 				glm::mat4 inverse = hits.note->note_transforms[0]->make_world_to_local();
 				glm::vec3 start = glm::vec3(inverse * glm::vec4(camera->transform->position, 1.0f));
-				// std::cout << coord[0] << " " << coord[1] << " " << music_time << " " << hits.note->hit_times[0] + real_song_offset << "\n";
 				glm::vec3 end = glm::vec3(inverse * glm::vec4(coord.x, coord.y, border_depth, 1.0f));
 				float dist = glm::distance(start, end);
-				// std::cout << "start: " << start.x << " " << start.y << " " << start.z << "\n";
-				// std::cout << "end border depth: " << end.x << " " << end.y << " " << end.z << "\n";
 				end = glm::vec3(inverse * glm::vec4(coord.x, coord.y, 2.5f, 1.0f));
-				// std::cout << "end 2.5: " << end.x << " " << end.y << " " << end.z << "\n";
-				// std::cout << dist << " " << hits.time << "\n";
-				// std::cout << "\n";
 				if(gun_mode == 2 && dist - 0.5 < hits.time && hits.time < dist + 0.5) {
-					hit_note(hits.note, 5);
-					// std::cout << "score: " << score << ", still hitting\n";		
+					hit_note(hits.note, 5);	
 				}
 				else {	
 					hit_note(hits.note, 6);
-					// std::cout << "score: " << score << ", missed hold\n";	
 				}
-				// std::cout << "dist: " << dist << ", time: " << hits.time << "\n";
 			}
 		}
 		else {
 			if (holding || !mouse_down) return; // don't allow mouse LMB down hold cheese or lifting mouse button up
 
 			// valid hit time for single and burst
-			// std::cout << music_time << " " << hits.note->hit_times[0] + real_song_offset << "\n";
 			if(fabs(music_time - hits.note->hit_times[0]) < valid_hit_time_delta / 2.0f) {
 				// good hit
 				if ((gun_mode == 0 && hits.note->noteType == NoteType::SINGLE) || (gun_mode == 1 && hits.note->noteType == NoteType::BURST)){
@@ -1031,14 +1038,8 @@ void PlayMode::change_gun(int idx_change, int manual_idx=-1) {
 void PlayMode::reset_song() {
 	// reset loaded assets
 	if (active_song) active_song->stop();
-	for (auto &note: notes) {
-		note.been_hit = false;
-		note.is_active = false;
-		for (uint64_t i = 0; i < note.note_transforms.size(); i++) {
-			note.note_transforms[i]->position.z = init_note_depth;
-			note.note_transforms[i]->scale = glm::vec3(0.0f, 0.0f, 0.0f);
-		}
-	}
+	scene.drawables.erase(std::prev(scene.drawables.end(), notes.size()), scene.drawables.end());
+	read_notes(song_list[chosen_song].first);
 }
 
 /*
@@ -1092,7 +1093,6 @@ void PlayMode::set_health_bar() {
 		healthbarright_transform->scale = glm::vec3(0.0f, 0.0f, 0.0f);
 	}
 }
-
 
 /*
 	Function that starts a song (and initializes all variables) when we choose to start a level
@@ -1409,12 +1409,6 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 	light_energy.emplace_back(glm::vec3(10000.0f, 10000.0f, 10000.0f));
 	light_type.emplace_back(2);
 	light_cutoff.emplace_back(1.0f);
-
-	// light_location.emplace_back(camera->transform->position + glm::vec3(0.0f, 3.0f, 50.0f));
-	// light_direction.emplace_back(glm::vec3(0.0f, 0.0f, -1.0f));
-	// light_energy.emplace_back(glm::vec3(10.0f, 10.0f, 10.0f));
-	// light_type.emplace_back(3);
-	// light_cutoff.emplace_back(1.0f);
 
 	glUseProgram(lit_color_texture_program->program);
 	glUniform1ui(lit_color_texture_program->LIGHTS_uint, lights);
