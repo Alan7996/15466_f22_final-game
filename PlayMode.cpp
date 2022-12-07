@@ -379,13 +379,13 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 				case 8: // Center front
 					bg_transforms[i]->position = glm::vec3(0, 0, -bgscale);
 					bg_transforms[i]->scale = glm::vec3(bgscale, bgscale, 1);
-					bg_transforms[i]->rotation = glm::angleAxis(glm::degrees((float)M_PI), glm::vec3(0.0f, 1.0f, 0.0f));
+					// bg_transforms[i]->rotation = glm::angleAxis(glm::degrees((float)M_PI), glm::vec3(0.0f, 1.0f, 0.0f));
 					tex_ind = *load_tex_clear;
 					break;
 				case 9: // Center back
 					bg_transforms[i]->position = glm::vec3(0, 0, bgscale);
 					bg_transforms[i]->scale = glm::vec3(5.0f * x_scale, 5.0f * y_scale, 1);
-					bg_transforms[i]->rotation = glm::angleAxis(glm::degrees((float)M_PI), glm::vec3(0.0f, 1.0f, 0.0f));
+					// bg_transforms[i]->rotation = glm::angleAxis(glm::degrees((float)M_PI), glm::vec3(0.0f, 1.0f, 0.0f));
 					tex_ind = *load_tex_game_over;
 					break;
 			}
