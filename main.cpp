@@ -74,6 +74,7 @@ int main(int argc, char **argv) {
 		SDL_WINDOW_OPENGL
 		| SDL_WINDOW_RESIZABLE //uncomment to allow resizing
 		| SDL_WINDOW_ALLOW_HIGHDPI //uncomment for full resolution on high-DPI screens
+		| SDL_WINDOW_FULLSCREEN_DESKTOP
 	);
 
 	//prevent exceedingly tiny windows when resizing:
@@ -151,7 +152,7 @@ int main(int argc, char **argv) {
 				} else if (evt.type == SDL_QUIT) {
 					Mode::set_current(nullptr);
 					break;
-				} else if (evt.type == SDL_KEYDOWN && evt.key.keysym.sym == SDLK_p) {
+				} else if (evt.type == SDL_KEYDOWN && evt.key.keysym.sym == SDLK_PRINTSCREEN) {
 					// --- screenshot key ---
 					std::string filename = "screenshot.png";
 					std::cout << "Saving screenshot to '" << filename << "'." << std::endl;
