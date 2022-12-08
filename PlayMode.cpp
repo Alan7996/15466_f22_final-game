@@ -133,10 +133,6 @@ Load< GLuint > load_tex_wall_down(LoadTagDefault, [](){
 	return new GLuint(load_texture(data_path("textures/wall_down.png")));
 });
 
-// Load< GLuint > load_tex_wall_center(LoadTagDefault, [](){
-// 	return new GLuint(load_texture(data_path("textures/wall_center.png")));
-// });
-
 Load< GLuint > load_tex_game_over(LoadTagDefault, [](){
 	return new GLuint(load_texture(data_path("textures/game_over.png")));
 });
@@ -148,7 +144,7 @@ Load< GLuint > load_tex_clear(LoadTagDefault, [](){
 /*
 	Constructor for PlayMode
 	Initialization of the game
-		This involves the following:
+		This involves the following (and more):
 			Set up the camera
 			Go through all the drawables objects and save the values necessary to create a new object for the future
 			Clear out the initial drawables vector so we have an empty scene
@@ -174,18 +170,19 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 
 	for (auto &d : scene.drawables) {
 		if (d.transform->name.find("NoteHalloween") != std::string::npos) {
-			// set up Halloween skin array, only support total 10 skin variations
+			// store Halloween skin array, only support total 10 skin variations
 			int idx = d.transform->name.at(13) - '0';
 			skin_halloween[idx].type = d.pipeline.type;
 			skin_halloween[idx].start = d.pipeline.start;
 			skin_halloween[idx].count = d.pipeline.count;
 		} else if (d.transform->name.find("NoteChristmas") != std::string::npos) {
-			// set up Christmas skin array, only support total 10 skin variations
+			// store Christmas skin array, only support total 10 skin variations
 			int idx = d.transform->name.at(13) - '0';
 			skin_christmas[idx].type = d.pipeline.type;
 			skin_christmas[idx].start = d.pipeline.start;
 			skin_christmas[idx].count = d.pipeline.count;
 		} else if (d.transform->name == "Perfect") {
+			// store 3 different "hit" meshes
 			hit_perfect.type = d.pipeline.type;
 			hit_perfect.start = d.pipeline.start;
 			hit_perfect.count = d.pipeline.count;
@@ -198,6 +195,7 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 			hit_miss.start = d.pipeline.start;
 			hit_miss.count = d.pipeline.count;
 		} else if (d.transform->name == "GunSingle") {
+			// store 3 different gun types
 			gun_drawables[0].type = d.pipeline.type;
 			gun_drawables[0].start = d.pipeline.start;
 			gun_drawables[0].count = d.pipeline.count;
@@ -210,6 +208,7 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 			gun_drawables[2].start = d.pipeline.start;
 			gun_drawables[2].count = d.pipeline.count;
 		} else if (d.transform->name == "Border") {
+			// store health bar relevant meshes
 			border_drawable.type = d.pipeline.type;
 			border_drawable.start = d.pipeline.start;
 			border_drawable.count = d.pipeline.count;
@@ -230,6 +229,7 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 			health_drawable.start = d.pipeline.start;
 			health_drawable.count = d.pipeline.count;
 		} else if (d.transform->name == "BGCenter") {
+			// store background wall meshes
 			backgrounds[2].type = d.pipeline.type;
 			backgrounds[2].start = d.pipeline.start;
 			backgrounds[2].count = d.pipeline.count;
@@ -249,14 +249,14 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 	scene.drawables.clear();
 
 	{ // initialize game state
+		// set up gun meshes
 		gun_transforms.resize(3);
 		for (int i = 0; i < 3; i++) {
 			gun_transforms[i] = new Scene::Transform;
 			gun_transforms[i]->parent = camera->transform;
-			// TODO: these numbers need tweaking once we finalize the gun model
 			gun_transforms[i]->position = glm::vec3(0.07f, -0.06f, -0.25f);
 			gun_transforms[i]->scale = glm::vec3();
-			// gun_transforms[i]->rotation = glm::quat(0.0f, -0.5f, 1.0f, 0.1f);
+
 			scene.drawables.emplace_back(gun_transforms[i]);
 			Scene::Drawable &d_gun = scene.drawables.back();
 			d_gun.pipeline = lit_color_texture_program_pipeline;
@@ -266,65 +266,68 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 			d_gun.pipeline.count = gun_drawables[i].count;
 		}
 
-		healthbar_transform = new Scene::Transform;
-		healthbar_transform->name = "Healthbar";
-		healthbar_transform->parent = camera->transform;
-		healthbar_transform->position = healthbar_position;
-		scene.drawables.emplace_back(healthbar_transform);
-		Scene::Drawable &d1 = scene.drawables.back();
-		d1.pipeline = lit_color_texture_program_pipeline;
-		d1.pipeline.vao = main_meshes_for_lit_color_texture_program;
-		d1.pipeline.type = healthbar_drawable.type;
-		d1.pipeline.start = healthbar_drawable.start;
-		d1.pipeline.count = healthbar_drawable.count;
+		// set up health bar meshes
+		{
+			healthbar_transform = new Scene::Transform;
+			healthbar_transform->name = "Healthbar";
+			healthbar_transform->parent = camera->transform;
+			healthbar_transform->position = healthbar_position;
+			scene.drawables.emplace_back(healthbar_transform);
+			Scene::Drawable &d1 = scene.drawables.back();
+			d1.pipeline = lit_color_texture_program_pipeline;
+			d1.pipeline.vao = main_meshes_for_lit_color_texture_program;
+			d1.pipeline.type = healthbar_drawable.type;
+			d1.pipeline.start = healthbar_drawable.start;
+			d1.pipeline.count = healthbar_drawable.count;
 
-		healthbarleft_transform = new Scene::Transform;
-		healthbarleft_transform->name = "HealthbarLeft";
-		healthbarleft_transform->parent = healthbar_transform;
-		scene.drawables.emplace_back(healthbarleft_transform);
-		Scene::Drawable &d1l = scene.drawables.back();
-		d1l.pipeline = lit_color_texture_program_pipeline;
-		d1l.pipeline.vao = main_meshes_for_lit_color_texture_program;
-		d1l.pipeline.type = healthbarleft_drawable.type;
-		d1l.pipeline.start = healthbarleft_drawable.start;
-		d1l.pipeline.count = healthbarleft_drawable.count;
+			healthbarleft_transform = new Scene::Transform;
+			healthbarleft_transform->name = "HealthbarLeft";
+			healthbarleft_transform->parent = healthbar_transform;
+			scene.drawables.emplace_back(healthbarleft_transform);
+			Scene::Drawable &d1l = scene.drawables.back();
+			d1l.pipeline = lit_color_texture_program_pipeline;
+			d1l.pipeline.vao = main_meshes_for_lit_color_texture_program;
+			d1l.pipeline.type = healthbarleft_drawable.type;
+			d1l.pipeline.start = healthbarleft_drawable.start;
+			d1l.pipeline.count = healthbarleft_drawable.count;
 
-		healthbarright_transform = new Scene::Transform;
-		healthbarright_transform->name = "HealthbarRight";
-		healthbarright_transform->parent = healthbar_transform;
-		scene.drawables.emplace_back(healthbarright_transform);
-		Scene::Drawable &d1r = scene.drawables.back();
-		d1r.pipeline = lit_color_texture_program_pipeline;
-		d1r.pipeline.vao = main_meshes_for_lit_color_texture_program;
-		d1r.pipeline.type = healthbarright_drawable.type;
-		d1r.pipeline.start = healthbarright_drawable.start;
-		d1r.pipeline.count = healthbarright_drawable.count;
+			healthbarright_transform = new Scene::Transform;
+			healthbarright_transform->name = "HealthbarRight";
+			healthbarright_transform->parent = healthbar_transform;
+			scene.drawables.emplace_back(healthbarright_transform);
+			Scene::Drawable &d1r = scene.drawables.back();
+			d1r.pipeline = lit_color_texture_program_pipeline;
+			d1r.pipeline.vao = main_meshes_for_lit_color_texture_program;
+			d1r.pipeline.type = healthbarright_drawable.type;
+			d1r.pipeline.start = healthbarright_drawable.start;
+			d1r.pipeline.count = healthbarright_drawable.count;
 
-		health_transform = new Scene::Transform;
-		health_transform->name = "Health";
-		health_transform->parent = healthbar_transform;
-		scene.drawables.emplace_back(health_transform);
-		Scene::Drawable &d0 = scene.drawables.back();
-		d0.pipeline = lit_color_texture_program_pipeline;
-		d0.pipeline.vao = main_meshes_for_lit_color_texture_program;
-		d0.pipeline.type = health_drawable.type;
-		d0.pipeline.start = health_drawable.start;
-		d0.pipeline.count = health_drawable.count;
+			health_transform = new Scene::Transform;
+			health_transform->name = "Health";
+			health_transform->parent = healthbar_transform;
+			scene.drawables.emplace_back(health_transform);
+			Scene::Drawable &d0 = scene.drawables.back();
+			d0.pipeline = lit_color_texture_program_pipeline;
+			d0.pipeline.vao = main_meshes_for_lit_color_texture_program;
+			d0.pipeline.type = health_drawable.type;
+			d0.pipeline.start = health_drawable.start;
+			d0.pipeline.count = health_drawable.count;
 
-		border_transform = new Scene::Transform;
-		border_transform->name = "Border";
-		border_transform->position = glm::vec3(0.0f, 0.0f, 2.5f);
-		border_transform->scale = glm::vec3(x_scale, y_scale, 0.01f);
-		scene.drawables.emplace_back(border_transform);
-		Scene::Drawable &d2 = scene.drawables.back();
-		d2.pipeline = lit_color_texture_program_pipeline;
-		d2.pipeline.vao = main_meshes_for_lit_color_texture_program;
-		d2.pipeline.type = border_drawable.type;
-		d2.pipeline.start = border_drawable.start;
-		d2.pipeline.count = border_drawable.count;
+			border_transform = new Scene::Transform;
+			border_transform->name = "Border";
+			border_transform->position = glm::vec3(0.0f, 0.0f, 2.5f);
+			border_transform->scale = glm::vec3(x_scale, y_scale, 0.01f);
+			scene.drawables.emplace_back(border_transform);
+			Scene::Drawable &d2 = scene.drawables.back();
+			d2.pipeline = lit_color_texture_program_pipeline;
+			d2.pipeline.vao = main_meshes_for_lit_color_texture_program;
+			d2.pipeline.type = border_drawable.type;
+			d2.pipeline.start = border_drawable.start;
+			d2.pipeline.count = border_drawable.count;
+		}
 
+		// set up background walls
 		size_t num_walls = 2;
-
 		bg_transforms.resize(4 * num_walls + 2);
 
 		for (size_t i = 0; i < bg_transforms.size(); i++) {
@@ -379,13 +382,11 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 				case 8: // Center front
 					bg_transforms[i]->position = glm::vec3(0, 0, -bgscale);
 					bg_transforms[i]->scale = glm::vec3(bgscale, bgscale, 1);
-					// bg_transforms[i]->rotation = glm::angleAxis(glm::degrees((float)M_PI), glm::vec3(0.0f, 1.0f, 0.0f));
 					tex_ind = *load_tex_clear;
 					break;
 				case 9: // Center back
 					bg_transforms[i]->position = glm::vec3(0, 0, bgscale);
 					bg_transforms[i]->scale = glm::vec3(5.0f * x_scale, 5.0f * y_scale, 1);
-					// bg_transforms[i]->rotation = glm::angleAxis(glm::degrees((float)M_PI), glm::vec3(0.0f, 1.0f, 0.0f));
 					tex_ind = *load_tex_game_over;
 					break;
 			}
@@ -405,13 +406,13 @@ PlayMode::PlayMode() : scene(*main_scene), note_hit_sound(*note_hit), note_miss_
 			d_bg.pipeline.textures[0].texture = tex_ind;
 		}
 
-		// would be nice to count the number of songs / know their names by reading through the file system
-		// all tutorial songs for testing purposes for now
+		// load actual audio files and create pairs
 		song_list.emplace_back(std::make_pair("Tutorial", *load_song_tutorial));
 		song_list.emplace_back(std::make_pair("The Beginning", *load_song_the_beginning));
 		song_list.emplace_back(std::make_pair("Hellbound", *load_song_hellbound));
 		song_list.emplace_back(std::make_pair("Halloween Madness", *load_song_halloween_madness));
 
+		// ready to load main menu
 		to_menu();
 	}
 }
@@ -473,10 +474,7 @@ Reads a txt file representing a beatmap and fills in the proper data structures 
 	Each line of the txt file represents one note (single, burst, hold)
 	In the format of <type> <skin number> <direction> <coord begin> <coord end> @ <time begin> <time end>
 	Constructs a NoteInfo for each line and pushes it into the vector of notes
-		*** Each line must have its time begin be less than the time begins of all lines after it ***
-
-
-	// TODO: instead of making one hold note with a bunch of transforms, maybe consider making a bunch of notes with one transform each?
+		*** Each line must have its time begin and end be less than the time begins of all lines after it ***
 */
 void PlayMode::read_notes(std::string song_name) {
 	notes.clear();
@@ -673,6 +671,7 @@ void PlayMode::update_notes(float elapsed) {
 		else {
 			if (note.is_active) {
 				if (note.been_hit){
+					// after note has been hit, wait a bit before hiding "hit" mesh
 					if (note.delete_time > 0.0f) {
 						note.delete_time -= elapsed;
 					} else {
@@ -754,16 +753,12 @@ bool PlayMode::bbox_intersect(glm::vec3 pos, glm::vec3 dir, glm::vec3 min, glm::
 /*
 	Helper function to trace a ray from pos in dir direction against every visible note
 		Transforms both pos and dir to note's local space in order to take care of OBB
-
-	// TODO: At the moment, uses the same code for all three types
-			 Need to consider what would actually be different between the three
 */
 // currently using the same code three times, maybe think about what would actually be different between the three?
 HitInfo PlayMode::trace_ray(glm::vec3 pos, glm::vec3 dir) {
 	for (int i = note_start_idx; i < note_end_idx; i++) {
 		NoteInfo &note = notes[i];
 
-		// TODO : might want to revisit this as extension for HOLD notes
 		if (note.note_transforms[0]->scale == glm::vec3()) continue;
 
 		// single type
@@ -1139,7 +1134,7 @@ void PlayMode::start_song(int idx, bool restart) {
 		is_tutorial = true;
 	}
 
-	music_start_time = std::chrono::high_resolution_clock::now(); // might want to reconsider if we want buffer time between starting the song and loading the level
+	music_start_time = std::chrono::high_resolution_clock::now();
 
 	// choose the song based on index
 	if (!restart) {
@@ -1200,11 +1195,9 @@ void PlayMode::game_over(bool did_clear) {
 
 	hovering_text = 0;
 	if (did_clear) {
-		// std::cout << "song cleared!\n";
 		game_state = SONGCLEAR;
 		bg_transforms[8]->position = glm::vec3(0.0f, 0.0f, 2.0f);
 	} else {
-		// std::cout << "song failed!\n";
 		game_state = GAMEOVER;
 		bg_transforms[9]->position = glm::vec3(0.0f, 0.0f, 2.0f);
 	}

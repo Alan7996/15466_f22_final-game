@@ -23,7 +23,9 @@ Use Z to move back through guns and X to move forward through guns.
 
 Use - and = to adjust mouse sensitivity.
 
+
 Sources:
+
 Note_hit.wav: https://freesound.org/people/Sorinious_Genious/sounds/561089/ 
 
 Note_miss.wav: https://freesound.org/people/Zuckbeats219/sounds/520737/ 
